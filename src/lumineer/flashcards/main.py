@@ -37,26 +37,30 @@ class TabFocusTextEdit(QTextEdit):
         else:
             super().keyPressEvent(event)
 
-class AddCardDialog(QDialog):
-    def __init__(self, parent=None):
+class CardDialog(QDialog):
+    def __init__(self, front="", back="", parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Add New Card")
-        self.setGeometry(100, 100, 300, 200)
+        self.setWindowTitle("Card")
         self.setModal(True)
-        self.setup_ui()
+        self.setGeometry(100, 100, 300, 200)
+        self.front = front
+        self.back = back
+        self.setup_ui(front, back)
 
-    def setup_ui(self):
+    def setup_ui(self, front, back):
         layout = QVBoxLayout(self)
 
         # Front of the card
         layout.addWidget(QLabel("Flashcard front"))
         self.front_text = TabFocusTextEdit()
+        self.front_text.setPlainText(self.front)
         self.front_text.setTabChangesFocus(True)
         layout.addWidget(self.front_text)
 
         # Back of the card
         layout.addWidget(QLabel("Flashcard back"))
         self.back_text = TabFocusTextEdit()
+        self.back_text.setPlainText(self.back)
         self.back_text.setTabChangesFocus(True)
         layout.addWidget(self.back_text)
 
@@ -135,6 +139,7 @@ class FlashcardApp(QMainWindow):
         buttons = [
             ("prev", "＜", self.prev_card),
             ("new_deck", "☉", self.create_new_deck),
+            ("edit", "⟐", self.edit_current_card),
             ("flip", "⇵", self.flip_card),
             ("add_card", "＋", self.add_new_card),
             ("delete", "－", self.delete_item),
@@ -220,6 +225,7 @@ class FlashcardApp(QMainWindow):
         self.buttons['next'].setEnabled(has_cards)
         self.buttons['flip'].setEnabled(has_cards)
         self.buttons['add_card'].setEnabled(has_deck)
+        self.buttons['edit'].setEnabled(has_cards)
         self.buttons['delete'].setEnabled(has_deck)
         # 'new_deck' button is always enabled
 
@@ -262,7 +268,7 @@ class FlashcardApp(QMainWindow):
             QMessageBox.warning(self, 'No Deck Selected', 'Please select or create a deck first.')
             return
 
-        dialog = AddCardDialog(self)
+        dialog = CardDialog(parent=self)
         if dialog.exec_():
             front, back = dialog.get_card_content()
             if front and back:
@@ -335,6 +341,9 @@ class FlashcardApp(QMainWindow):
         self.flipCardShortcut = QShortcut(QKeySequence("Ctrl+."), self)
         self.flipCardShortcut.activated.connect(self.flip_card)
 
+        edit_shortcut = QShortcut(QKeySequence("Ctrl+E"), self)
+        edit_shortcut.activated.connect(self.edit_current_card)
+
         # For macOS, we need to set up additional shortcuts using the Command key
         if sys.platform == "darwin":
             self.addCardShortcutMac = QShortcut(QKeySequence("Cmd+Shift+A"), self)
@@ -355,6 +364,25 @@ class FlashcardApp(QMainWindow):
 
             self.flipCardShortcutMac = QShortcut(QKeySequence("Cmd+."), self)
             self.flipCardShortcutMac.activated.connect(self.flip_card)
+
+            edit_shortcut_mac = QShortcut(QKeySequence("Cmd+E"), self)
+            edit_shortcut_mac.activated.connect(self.edit_current_card)
+
+    def edit_current_card(self):
+        if not self.current_deck or self.current_card_index == -1:
+            QMessageBox.warning(self, 'No Card', 'No card is currently selected for editing.')
+            return
+
+        current_card = self.current_deck[self.current_card_index]
+        dialog = CardDialog(front=current_card['front'], back=current_card['back'], parent=self)
+        if dialog.exec_():
+            front, back = dialog.get_card_content()
+            if front and back:
+                self.current_deck[self.current_card_index] = {"front": front, "back": back}
+                self.save_current_deck()
+                self.update_display()
+            else:
+                QMessageBox.warning(self, 'Invalid Card', 'Both front and back of the card must have content.')
 
 def main():
     app = QApplication(sys.argv)

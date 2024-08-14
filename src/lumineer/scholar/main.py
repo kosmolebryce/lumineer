@@ -32,8 +32,8 @@ from PyQt5.QtGui import QColor, QPalette
 # Constants
 APP_NAME = "Lumineer"
 APP_AUTHOR = "kosmolebryce"
-APP_DATA_DIR = Path(appdirs.user_data_dir(APP_NAME, APP_AUTHOR)) / "Scholyr"
-APP_CONFIG_DIR = Path(appdirs.user_config_dir(APP_NAME, APP_AUTHOR)) / "Scholyr"
+APP_DATA_DIR = Path(appdirs.user_data_dir(APP_NAME, APP_AUTHOR)) / "scholar"
+APP_CONFIG_DIR = Path(appdirs.user_config_dir(APP_NAME, APP_AUTHOR)) / "scholar"
 
 class Managyr:
     def __init__(
@@ -218,7 +218,7 @@ class ManagyrApp(QMainWindow):
     def __init__(self, manager):
         super().__init__()
         self.manager = manager
-        self.setWindowTitle("SCHOLYR")
+        self.setWindowTitle("Scholar - Lumineer")
         self.initUI()
 
     def initUI(self):

@@ -7,7 +7,7 @@ if [ -z "$VYPYR_DIR" ]; then
 fi
 
 # Navigate to the directory
-cd "$VYPYR_DIR/src/scholyr" || { echo "Directory not found: $VYPYR_DIR/src/scholyr"; exit 1; }
+cd "$VYPYR_DIR/src/scholar" || { echo "Directory not found: $VYPYR_DIR/src/scholar"; exit 1; }
 
 # Run the Python script in the background
 python -m main &

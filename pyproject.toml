@@ -19,7 +19,7 @@ black = "^24.8.0"
 
 [tool.poetry.scripts]
 flashcards = "lumineer.flashcards.main:main"
-scholyr = "lumineer.scholyr.main:main"
+scholar = "lumineer.scholar.main:main"
 
 [build-system]
 requires = ["poetry-core"]
