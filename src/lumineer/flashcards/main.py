@@ -1,3 +1,5 @@
+# `lumineer/src/lumineer/flashcards/main.py`
+
 import sys
 import os
 import random

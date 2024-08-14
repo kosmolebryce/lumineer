@@ -5,10 +5,12 @@ import os
 from pathlib import Path
 from PyQt5.QtWidgets import (
     QApplication,
+    QFrame,
     QMainWindow,
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
+    QFormLayout,
     QGridLayout,
     QLabel,
     QLineEdit,
@@ -25,9 +27,10 @@ from PyQt5.QtWidgets import (
     QInputDialog,
     QDialog,
     QDialogButtonBox,
+    QSizePolicy
 )  # Added QInputDialog
 from PyQt5.QtCore import Qt, QCoreApplication
-from PyQt5.QtGui import QColor, QPalette
+from PyQt5.QtGui import QBrush, QColor, QPalette
 
 # Constants
 APP_NAME = "Lumineer"
@@ -35,12 +38,27 @@ APP_AUTHOR = "kosmolebryce"
 APP_DATA_DIR = Path(appdirs.user_data_dir(APP_NAME, APP_AUTHOR)) / "scholar"
 APP_CONFIG_DIR = Path(appdirs.user_config_dir(APP_NAME, APP_AUTHOR)) / "scholar"
 
+class TodoItem(QListWidgetItem):
+    def __init__(self, text, checked=False):
+        super().__init__()
+        self.setText(text)
+        self.setCheckState(Qt.Checked if checked else Qt.Unchecked)
+        self.update_background()
+
+    def update_background(self):
+        if self.checkState() == Qt.Checked:
+            self.setBackground(QBrush(QColor(200, 200, 200)))  # Light gray
+        else:
+            # self.setBackground(QBrush(QColor(51, 51, 51)))  # White
+            pass
+
 class Managyr:
     def __init__(
         self,
         record_file="record.json",
         schedule_file="schedule.json",
         gradebook_dir="gradebooks/",
+        todo_file="todos.json"
     ):
         self.record_file = APP_DATA_DIR / record_file
         self.schedule_file = APP_DATA_DIR / schedule_file
@@ -51,6 +69,43 @@ class Managyr:
         self.load_record()
         self.load_schedule()
         self.ensure_gradebook_dir()
+        self.todo_file = APP_DATA_DIR / todo_file
+        self.todos = []
+        self.load_todos()
+
+    def load_todos(self):
+        if os.path.exists(self.todo_file):
+            with open(self.todo_file, 'r') as file:
+                self.todos = json.load(file)
+            
+            # Convert old format to new format if necessary
+            for i, todo in enumerate(self.todos):
+                if not isinstance(todo, dict):
+                    self.todos[i] = {'text': str(todo), 'checked': False}
+            
+            # Save the converted todos back to the file
+            self.save_todos()
+
+    def save_todos(self):
+        with open(self.todo_file, 'w') as file:
+            json.dump(self.todos, file, indent=4)
+
+    def get_todos(self):
+        return self.todos
+
+    def add_todo(self, todo):
+        self.todos.append(todo)
+        self.save_todos()
+
+    def update_todo(self, index, new_todo):
+        if 0 <= index < len(self.todos):
+            self.todos[index] = new_todo
+            self.save_todos()
+
+    def delete_todo(self, index):
+        if 0 <= index < len(self.todos):
+            del self.todos[index]
+            self.save_todos()       
 
     def ensure_gradebook_dir(self):
         if not os.path.exists(self.gradebook_dir):
@@ -220,6 +275,7 @@ class ManagyrApp(QMainWindow):
         self.manager = manager
         self.setWindowTitle("Scholar - Lumineer")
         self.initUI()
+        
 
     def initUI(self):
         self.centralWidget = QWidget(self)
@@ -328,6 +384,11 @@ class ManagyrApp(QMainWindow):
             background-color: #FFDE98; /* Peach Fuzz for selected item */
             color: #000; /* Black text for selected item */
         }
+        QFrame[frameShape="4"],
+        QFrame[frameShape="HLine"] {
+        color: rgba(255, 222, 152, 0.8);
+        background-color: rgba(255, 222, 152, 0.8);
+        }
         """
         )
 
@@ -367,36 +428,166 @@ class ManagyrApp(QMainWindow):
             )  # Set minimum height for items
 
     def initRecordTab(self):
-        layout = QGridLayout()
-        layout.addWidget(QLabel("Name:        "), 0, 0)
+        layout = QVBoxLayout()
+        
+        # Create a form layout for input fields
+        form_layout = QFormLayout()
+        form_layout.setFieldGrowthPolicy(QFormLayout.ExpandingFieldsGrow)
+        form_layout.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        form_layout.setVerticalSpacing(10)
+        
         self.nameEntry = QLineEdit()
-        layout.addWidget(self.nameEntry, 0, 1)
-        layout.addWidget(QLabel("Age:         "), 1, 0)
         self.ageEntry = QLineEdit()
-        layout.addWidget(self.ageEntry, 1, 1)
-        layout.addWidget(QLabel("Major:       "), 2, 0)
         self.majorEntry = QLineEdit()
-        layout.addWidget(self.majorEntry, 2, 1)
+        
+        # Set size policies to expand horizontally
+        for widget in (self.nameEntry, self.ageEntry, self.majorEntry):
+            widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        
+        form_layout.addRow("Name:", self.nameEntry)
+        form_layout.addRow("Age:", self.ageEntry)
+        form_layout.addRow("Major:", self.majorEntry)
+        
+        layout.addLayout(form_layout)
+        
+        # Add some vertical spacing
+        layout.addSpacing(10)
+        
+        # Create a QTextEdit for the preview pane with a custom size policy
         self.previewPane = QTextEdit()
         self.previewPane.setReadOnly(True)
-        layout.addWidget(self.previewPane, 3, 0, 1, 2)
+        self.previewPane.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.previewPane.setMinimumHeight(60)
+        self.previewPane.setMaximumHeight(100)
+        layout.addWidget(self.previewPane)
+        
+        # Add some vertical spacing
+        layout.addSpacing(10)
+        
+        # Button layout
+        button_layout = QHBoxLayout()
+        button_layout.setAlignment(Qt.AlignLeft)  # Align buttons to the left
+        
+        for button_text, slot in [
+            ("Refresh Preview", self.update_preview),
+            ("Save Record", self.save_current_record),
+            # ("Exit", self.exit_program)
+        ]:
+            button = QPushButton(button_text)
+            button.clicked.connect(slot)
+            button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)  # Fixed size policy
+            button_layout.addWidget(button)
+            button_layout.addSpacing(10)  # Add spacing between buttons
 
-        buttonLayout = QHBoxLayout()
-        self.refreshButton = QPushButton("Refresh Preview")
-        self.refreshButton.clicked.connect(self.update_preview)
-        buttonLayout.addWidget(self.refreshButton)
-
-        self.saveButton = QPushButton("Save Record")
-        self.saveButton.clicked.connect(self.save_current_record)
-        buttonLayout.addWidget(self.saveButton)
-
-        self.exitButton = QPushButton("Exit")
-        self.exitButton.clicked.connect(self.exit_program)
-        buttonLayout.addWidget(self.exitButton)
-
-        layout.addLayout(buttonLayout, 4, 0, 1, 2)
-
+        layout.addLayout(button_layout)
+        
+        # Add separator
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        layout.addWidget(separator)
+        
+        # To-Do Section
+        layout.addWidget(QLabel("To-Do List"))
+        
+        self.todoList = QListWidget()
+        self.todoList.setSelectionMode(QListWidget.SingleSelection)
+        self.todoList.itemChanged.connect(self.todo_item_changed)
+        layout.addWidget(self.todoList)
+        
+        todo_button_layout = QHBoxLayout()
+        todo_button_layout.setAlignment(Qt.AlignLeft)  # Align buttons to the left
+        
+        for button_text, slot in [
+            ("Add", self.add_todo),
+            ("Edit", self.edit_todo),
+            ("Delete", self.delete_todo)
+        ]:
+            button = QPushButton(button_text)
+            button.clicked.connect(slot)
+            button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)  # Fixed size policy
+            todo_button_layout.addWidget(button)
+            todo_button_layout.addSpacing(10)  # Add spacing between buttons
+        
+        layout.addLayout(todo_button_layout)
+        
+        # Add stretch to push everything to the top
+        layout.addStretch(1)
+        
         self.recordTab.setLayout(layout)
+        
+        # Load existing todos
+        self.load_todos()
+
+    def load_todos(self):
+        todos = self.manager.get_todos()
+        for todo in todos:
+            if isinstance(todo, dict):
+                item = TodoItem(todo.get('text', ''), todo.get('checked', False))
+            else:
+                item = TodoItem(str(todo), False)
+            self.todoList.addItem(item)
+
+    def add_todo(self):
+        todo, ok = QInputDialog.getText(self, "Add To-Do", "Enter a new to-do item:")
+        if ok and todo:
+            item = TodoItem(todo)
+            self.todoList.addItem(item)
+            self.manager.add_todo({'text': todo, 'checked': False})
+
+    def edit_todo(self):
+        current_item = self.todoList.currentItem()
+        if current_item:
+            new_todo, ok = QInputDialog.getText(self, "Edit To-Do", 
+                                                "Edit the to-do item:", 
+                                                text=current_item.text())
+            if ok and new_todo:
+                index = self.todoList.row(current_item)
+                current_item.setText(new_todo)
+                current_item.update_background()  # Ensure background is updated
+                self.manager.update_todo(index, {
+                    'text': new_todo,
+                    'checked': current_item.checkState() == Qt.Checked
+                })
+
+    def todo_item_changed(self, item):
+        item.update_background()  # Update background when item is checked/unchecked
+        index = self.todoList.row(item)
+        self.manager.update_todo(index, {
+            'text': item.text(),
+            'checked': item.checkState() == Qt.Checked
+        })
+
+    def delete_todo(self):
+        current_item = self.todoList.currentItem()
+        if current_item:
+            index = self.todoList.row(current_item)
+            self.todoList.takeItem(index)
+            self.manager.delete_todo(index)
+
+    # The adjust_preview_pane_height method remains the same
+    def adjust_preview_pane_height(self):
+        doc_height = self.previewPane.document().size().height()
+        new_height = doc_height + 10
+        new_height = max(60, min(new_height, 100))
+        self.previewPane.setFixedHeight(int(new_height))
+
+    # Update the update_preview method to adjust height
+    def update_preview(self):
+        record = self.manager.retrieve_record()
+        if record:
+            record_str = (
+                f"Name:         {record.get('name', 'N/A')}\n"
+                f"Age:          {record.get('age', 'N/A')}\n"
+                f"Major:        {record.get('major', 'N/A')}"
+            )
+            self.previewPane.setText(record_str)
+        else:
+            self.previewPane.setText("Name: N/A\nAge: N/A\nMajor: N/A")
+        
+        # Adjust the height after updating the content
+        self.adjust_preview_pane_height()
+
 
     def initScheduleTab(self):
         layout = QVBoxLayout()
@@ -426,91 +617,69 @@ class ManagyrApp(QMainWindow):
 
         # Details Form Layout
         formLayout = QGridLayout()
-        formLayout.addWidget(QLabel("Course Code:"), 0, 0)
-        self.courseCodeEntry = QLineEdit()
-        formLayout.addWidget(self.courseCodeEntry, 0, 1)
-        formLayout.addWidget(QLabel("Section:"), 0, 2)
-        self.sectionEntry = QLineEdit()
-        formLayout.addWidget(self.sectionEntry, 0, 3)
+        form_fields = [
+            ("Course Code:", "courseCodeEntry"),
+            ("Section:", "sectionEntry"),
+            ("Course Title:", "courseTitleEntry"),
+            ("Meeting Days:", "meetingDaysEntry"),
+            ("Start Time:", "startTimeEntry"),
+            ("End Time:", "endTimeEntry"),
+            ("Location:", "locationEntry"),
+            ("Room Number:", "roomNumberEntry"),
+            ("Instructor Name:", "instructorNameEntry"),
+            ("Notes:", "notesEntry"),
+            ("Credit Hours:", "creditHoursEntry"),
+            ("Semester:", "semesterEntry")
+        ]
 
-        formLayout.addWidget(QLabel("Course Title:"), 1, 0)
-        self.courseTitleEntry = QLineEdit()
-        formLayout.addWidget(self.courseTitleEntry, 1, 1)
-        formLayout.addWidget(QLabel("Meeting Days:"), 1, 2)
-        self.meetingDaysEntry = QLineEdit()
-        formLayout.addWidget(self.meetingDaysEntry, 1, 3)
-
-        formLayout.addWidget(QLabel("Start Time:"), 2, 0)
-        self.startTimeEntry = QLineEdit()
-        formLayout.addWidget(self.startTimeEntry, 2, 1)
-        formLayout.addWidget(QLabel("End Time:"), 2, 2)
-        self.endTimeEntry = QLineEdit()
-        formLayout.addWidget(self.endTimeEntry, 2, 3)
-
-        formLayout.addWidget(QLabel("Location:"), 3, 0)
-        self.locationEntry = QLineEdit()
-        formLayout.addWidget(self.locationEntry, 3, 1)
-        formLayout.addWidget(QLabel("Room Number:"), 3, 2)
-        self.roomNumberEntry = QLineEdit()
-        formLayout.addWidget(self.roomNumberEntry, 3, 3)
-
-        formLayout.addWidget(QLabel("Instructor Name:"), 4, 0)
-        self.instructorNameEntry = QLineEdit()
-        formLayout.addWidget(self.instructorNameEntry, 4, 1)
-        formLayout.addWidget(QLabel("Notes:"), 4, 2)
-        self.notesEntry = QLineEdit()
-        formLayout.addWidget(self.notesEntry, 4, 3)
-
-        formLayout.addWidget(QLabel("Credit Hours:"), 5, 0)
-        self.creditHoursEntry = QLineEdit()
-        formLayout.addWidget(self.creditHoursEntry, 5, 1)
-        formLayout.addWidget(QLabel("Semester:"), 5, 2)
-        self.semesterEntry = QLineEdit()
-        formLayout.addWidget(self.semesterEntry, 5, 3)
+        for i, (label, attr_name) in enumerate(form_fields):
+            formLayout.addWidget(QLabel(label), i // 2, (i % 2) * 2)
+            setattr(self, attr_name, QLineEdit())
+            formLayout.addWidget(getattr(self, attr_name), i // 2, (i % 2) * 2 + 1)
 
         # Buttons Layout
-        buttonLayout = QHBoxLayout()
-        self.addClassButton = QPushButton("Add Class")
-        self.addClassButton.clicked.connect(self.add_class)
-        buttonLayout.addWidget(self.addClassButton)
+        button_layout = QHBoxLayout()
+        button_layout.setAlignment(Qt.AlignLeft)
 
-        self.updateClassButton = QPushButton("Update Class")
-        self.updateClassButton.clicked.connect(self.update_class)
-        buttonLayout.addWidget(self.updateClassButton)
-
-        self.removeClassButton = QPushButton("Remove Class")
-        self.removeClassButton.clicked.connect(self.remove_class)
-        buttonLayout.addWidget(self.removeClassButton)
-
-        self.exitButtonSchedule = QPushButton("Exit")
-        self.exitButtonSchedule.clicked.connect(self.exit_program)
-        buttonLayout.addWidget(self.exitButtonSchedule)
+        for button_text, slot in [
+            ("Add Class", self.add_class),
+            ("Update Class", self.update_class),
+            ("Remove Class", self.remove_class),
+            # ("Exit", self.exit_program)
+        ]:
+            button = QPushButton(button_text)
+            button.clicked.connect(slot)
+            button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+            button_layout.addWidget(button)
+            button_layout.addSpacing(10)  # Add spacing between buttons
 
         # Combine all parts into the main layout
         combinedLayout = QVBoxLayout()
         combinedLayout.addLayout(formLayout)
-        combinedLayout.addLayout(buttonLayout)
+        combinedLayout.addLayout(button_layout)
         layout.addLayout(combinedLayout)
+
         self.scheduleTab.setLayout(layout)
 
     def initGradebookTab(self):
         layout = QVBoxLayout()
+        
+        # Semester selection
         self.gradebookSemesterComboBox = QComboBox()
-        # Remove or comment out the line that sets the comboBoxStyle
-        # self.gradebookSemesterComboBox.setStyleSheet(self.comboBoxStyle)
         self.gradebookSemesterComboBox.currentIndexChanged.connect(
             self.populate_gradebook_list_based_on_semester
         )
-
         layout.addWidget(QLabel("Select Semester for Gradebook:"))
         layout.addWidget(self.gradebookSemesterComboBox)
 
+        # Gradebook list
         self.gradebookList = QListWidget()
         self.gradebookList.currentItemChanged.connect(
             self.populate_gradebook_from_selection
         )
         layout.addWidget(self.gradebookList)
 
+        # Assignments table
         self.assignmentsTable = QTableWidget(0, 5)
         self.assignmentsTable.setHorizontalHeaderLabels(
             ["Name", "Points Possible", "Points Actual", "Grade (%)", "Letter Grade"]
@@ -521,23 +690,31 @@ class ManagyrApp(QMainWindow):
         )
         layout.addWidget(self.assignmentsTable)
 
-        buttonLayout = QHBoxLayout()
-        self.addAssignmentButton = QPushButton("Add Assignment")
-        self.addAssignmentButton.clicked.connect(self.add_assignment)
-        buttonLayout.addWidget(self.addAssignmentButton)
+        # Button layout
+        button_layout = QHBoxLayout()
+        button_layout.setAlignment(Qt.AlignLeft)
 
-        self.removeAssignmentButton = QPushButton("Remove Assignment")
-        self.removeAssignmentButton.clicked.connect(self.remove_assignment)
-        buttonLayout.addWidget(self.removeAssignmentButton)
+        for button_text, slot in [
+            ("Add Assignment", self.add_assignment),
+            ("Remove Assignment", self.remove_assignment),
+            # ("Exit", self.exit_program)
+        ]:
+            button = QPushButton(button_text)
+            button.clicked.connect(slot)
+            button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+            button_layout.addWidget(button)
+            button_layout.addSpacing(10)  # Add spacing between buttons
 
-        self.exitButtonGradebook = QPushButton("Exit")
-        self.exitButtonGradebook.clicked.connect(self.exit_program)
-        buttonLayout.addWidget(self.exitButtonGradebook)
-
-        layout.addLayout(buttonLayout)
+        layout.addLayout(button_layout)
+        
+        # Set the layout for the gradebook tab
         self.gradebookTab.setLayout(layout)
+        
+        # Populate the semester combo box
+        self.populate_gradebook_semester_combobox()
 
-        self.populate_gradebook_semester_combobox()  # Populate and set the active semester
+        # Connect the cell changed signal
+        self.assignmentsTable.cellChanged.connect(self.on_cell_changed)
 
     def update_summary(self):
         selected_semester = self.semesterComboBox.currentText()
@@ -887,9 +1064,8 @@ class ManagyrApp(QMainWindow):
 
     def populate_assignments_table(self, gradebook, course_title, semester):
         self.assignmentsTable.clearContents()
-        self.assignmentsTable.setRowCount(len(gradebook))
-        total_possible = 0
-        total_actual = 0
+        self.assignmentsTable.setRowCount(len(gradebook) + 1)  # +1 for overall grade row
+        self.assignmentsTable.cellChanged.disconnect(self.on_cell_changed)
 
         for i, assignment in enumerate(gradebook):
             name_item = QTableWidgetItem(assignment.get("name", ""))
@@ -899,48 +1075,114 @@ class ManagyrApp(QMainWindow):
             points_actual_item = QTableWidgetItem(
                 str(assignment.get("points_actual", 0))
             )
-            grade_percent = (
-                (
-                    assignment.get("points_actual", 0)
-                    / assignment.get("points_possible", 0)
-                    * 100
-                )
-                if assignment.get("points_possible", 0)
-                else 0
-            )
-            grade_percent_item = QTableWidgetItem(f"{grade_percent:.2f}%")
-            letter_grade_item = QTableWidgetItem(
-                self.convert_percentage_to_letter_grade(grade_percent)
-            )
-
+            
+            name_item.setFlags(name_item.flags() | Qt.ItemIsEditable)
+            points_possible_item.setFlags(points_possible_item.flags() | Qt.ItemIsEditable)
+            points_actual_item.setFlags(points_actual_item.flags() | Qt.ItemIsEditable)
+            
             self.assignmentsTable.setItem(i, 0, name_item)
             self.assignmentsTable.setItem(i, 1, points_possible_item)
             self.assignmentsTable.setItem(i, 2, points_actual_item)
-            self.assignmentsTable.setItem(i, 3, grade_percent_item)
-            self.assignmentsTable.setItem(i, 4, letter_grade_item)
+            
+            self.update_grade_items(i)
 
-            total_possible += assignment.get("points_possible", 0)
-            total_actual += assignment.get("points_actual", 0)
+        # Add overall grade row
+        self.update_overall_grade_row(distinct_style=True, bold_only=True)
 
-        overall_grade = (
-            (total_actual / total_possible * 100) if total_possible > 0 else 0
-        )
-        overall_letter_grade = self.convert_percentage_to_letter_grade(overall_grade)
-        self.assignmentsTable.insertRow(self.assignmentsTable.rowCount())
-        overall_row = self.assignmentsTable.rowCount() - 1
-        self.assignmentsTable.setItem(overall_row, 0, QTableWidgetItem("Overall Grade"))
-        self.assignmentsTable.setItem(
-            overall_row, 1, QTableWidgetItem(str(total_possible))
-        )
-        self.assignmentsTable.setItem(
-            overall_row, 2, QTableWidgetItem(str(total_actual))
-        )
-        self.assignmentsTable.setItem(
-            overall_row, 3, QTableWidgetItem(f"{overall_grade:.2f}%")
-        )
-        self.assignmentsTable.setItem(
-            overall_row, 4, QTableWidgetItem(overall_letter_grade)
-        )
+        self.assignmentsTable.cellChanged.connect(self.on_cell_changed)
+    
+    def on_cell_changed(self, row, column):
+        if column in [0, 1, 2] and row < self.assignmentsTable.rowCount() - 1:  # Exclude overall grade row
+            current_item = self.gradebookList.currentItem()
+            if current_item:
+                course_info = json.loads(current_item.data(Qt.UserRole))
+                course_title = course_info["course_title"]
+                semester = course_info["semester"]
+                gradebook = self.manager.get_gradebook(course_title, semester)
+
+                name = self.assignmentsTable.item(row, 0).text()
+                points_possible = float(self.assignmentsTable.item(row, 1).text() or 0)
+                points_actual = float(self.assignmentsTable.item(row, 2).text() or 0)
+
+                gradebook[row] = {
+                    "name": name,
+                    "points_possible": points_possible,
+                    "points_actual": points_actual,
+                }
+
+                self.manager.save_gradebook(course_title, semester, gradebook)
+                self.update_grade_items(row)
+                self.update_overall_grade_row(distinct_style=True, bold_only=True)
+
+    def update_grade_items(self, row):
+        points_possible = float(self.assignmentsTable.item(row, 1).text())
+        points_actual = float(self.assignmentsTable.item(row, 2).text())
+        
+        if points_possible > 0:
+            grade_percent = (points_actual / points_possible) * 100
+        else:
+            grade_percent = 0
+        
+        grade_percent_item = QTableWidgetItem(f"{grade_percent:.2f}%")
+        grade_percent_item.setFlags(grade_percent_item.flags() & ~Qt.ItemIsEditable)
+        self.assignmentsTable.setItem(row, 3, grade_percent_item)
+        
+        letter_grade = self.convert_percentage_to_letter_grade(grade_percent)
+        letter_grade_item = QTableWidgetItem(letter_grade)
+        letter_grade_item.setFlags(letter_grade_item.flags() & ~Qt.ItemIsEditable)
+        self.assignmentsTable.setItem(row, 4, letter_grade_item)
+
+    def update_overall_grade_row(self, distinct_style=True, bold_only=False):
+        total_points_possible = 0
+        total_points_actual = 0
+        row_count = self.assignmentsTable.rowCount()
+        
+        for row in range(row_count - 1):  # Exclude the last row (overall grade)
+            points_possible = float(self.assignmentsTable.item(row, 1).text() or 0)
+            points_actual = float(self.assignmentsTable.item(row, 2).text() or 0)
+            total_points_possible += points_possible
+            total_points_actual += points_actual
+        
+        # Create and set items for the overall grade row
+        overall_label = QTableWidgetItem("Overall Grade")
+        overall_label.setFlags(overall_label.flags() & ~Qt.ItemIsEditable)
+        self.assignmentsTable.setItem(row_count - 1, 0, overall_label)
+        
+        overall_points_possible = QTableWidgetItem(str(total_points_possible))
+        overall_points_possible.setFlags(overall_points_possible.flags() & ~Qt.ItemIsEditable)
+        self.assignmentsTable.setItem(row_count - 1, 1, overall_points_possible)
+        
+        overall_points_actual = QTableWidgetItem(str(total_points_actual))
+        overall_points_actual.setFlags(overall_points_actual.flags() & ~Qt.ItemIsEditable)
+        self.assignmentsTable.setItem(row_count - 1, 2, overall_points_actual)
+        
+        if total_points_possible > 0:
+            overall_grade_percent = (total_points_actual / total_points_possible) * 100
+            overall_letter_grade = self.convert_percentage_to_letter_grade(overall_grade_percent)
+            
+            grade_percent_item = QTableWidgetItem(f"{overall_grade_percent:.2f}%")
+            grade_percent_item.setFlags(grade_percent_item.flags() & ~Qt.ItemIsEditable)
+            self.assignmentsTable.setItem(row_count - 1, 3, grade_percent_item)
+            
+            letter_grade_item = QTableWidgetItem(overall_letter_grade)
+            letter_grade_item.setFlags(letter_grade_item.flags() & ~Qt.ItemIsEditable)
+            self.assignmentsTable.setItem(row_count - 1, 4, letter_grade_item)
+        else:
+            for col in range(3, 5):
+                empty_item = QTableWidgetItem("N/A")
+                empty_item.setFlags(empty_item.flags() & ~Qt.ItemIsEditable)
+                self.assignmentsTable.setItem(row_count - 1, col, empty_item)
+        
+        # Apply styling if requested
+        if distinct_style:
+            for col in range(5):
+                item = self.assignmentsTable.item(row_count - 1, col)
+                if item:
+                    if not bold_only:
+                        item.setBackground(QColor(240, 240, 240))  # Light gray background
+                    font = item.font()
+                    font.setBold(True)
+                    item.setFont(font)
 
     def add_assignment(self):
         current = self.gradebookList.currentItem()
