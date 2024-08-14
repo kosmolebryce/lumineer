@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "lumineer"
+version = "0.0.0"
+description = "School tools"
+authors = ["K. LeBryce <kosmolebryce@pm.me>"]
+license = "Apache-2.0"
+readme = "README.md"
+packages = [{include = "lumineer", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pyqt5 = "^5.15.11"
+appdirs = "^1.4.4"
+markdown = "^3.6"
+
+[tool.poetry.group.dev.dependencies]
+poetry = "^1.8.3"
+black = "^24.8.0"
+
+[tool.poetry.scripts]
+flashcards = "lumineer.flashcards.main:main"
+scholyr = "lumineer.scholyr.main:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
