@@ -148,11 +148,11 @@ class FlashcardApp(QMainWindow):
         buttons = [
             ("prev", "＜", self.prev_card),
             ("new_deck", "☉", self.create_new_deck),
-            ("edit", "⟐", self.edit_current_card),
-            ("flip", "⇵", self.flip_card),
             ("shuffle", "⇄", self.shuffle_deck),
-            ("add_card", "＋", self.add_new_card),
             ("delete", "－", self.delete_item),
+            ("add_card", "＋", self.add_new_card),
+            ("flip", "⇵", self.flip_card),
+            ("edit", "⟐", self.edit_current_card),
             ("next", "＞", self.next_card),
         ]
 
