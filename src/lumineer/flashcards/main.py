@@ -120,6 +120,13 @@ class FlashcardApp(QMainWindow):
         self.initUI()
         self.load_decks()
         self.setup_shortcuts()
+
+    def shuffle_deck(self):
+        if self.current_deck:
+            random.shuffle(self.current_deck)
+            self.current_card_index = 0
+            self.is_back = True
+            self.update_display()
     
     def initUI(self):
         self.setGeometry(100, 100, 400, 300)
@@ -143,6 +150,7 @@ class FlashcardApp(QMainWindow):
             ("new_deck", "☉", self.create_new_deck),
             ("edit", "⟐", self.edit_current_card),
             ("flip", "⇵", self.flip_card),
+            ("shuffle", "⇄", self.shuffle_deck),
             ("add_card", "＋", self.add_new_card),
             ("delete", "－", self.delete_item),
             ("next", "＞", self.next_card),
@@ -201,6 +209,8 @@ class FlashcardApp(QMainWindow):
             else:
                 self.current_card_index = -1
                 self.card_display.setText("This deck is empty. Add some cards to get started!")
+
+            self.shuffle_deck()
         else:
             self.current_deck = []
             self.current_card_index = -1
@@ -229,6 +239,7 @@ class FlashcardApp(QMainWindow):
         self.buttons['add_card'].setEnabled(has_deck)
         self.buttons['edit'].setEnabled(has_cards)
         self.buttons['delete'].setEnabled(has_deck)
+        self.buttons['shuffle'].setEnabled(has_cards)
         # 'new_deck' button is always enabled
 
     def flip_card(self):
