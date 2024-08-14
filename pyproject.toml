@@ -18,6 +18,7 @@ poetry = "^1.8.3"
 black = "^24.8.0"
 
 [tool.poetry.scripts]
+lumineer = "lumineer.__main__:main"
 flashcards = "lumineer.flashcards.main:main"
 scholar = "lumineer.scholar.main:main"
 

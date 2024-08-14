@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout,
                              QInputDialog, QMessageBox, QMainWindow, QDialog,
                              QLabel, QDialogButtonBox, QShortcut, QRadioButton,
                              QButtonGroup)
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtGui import QKeyEvent, QKeySequence, QFont
 from appdirs import user_data_dir, user_config_dir
 
@@ -120,6 +120,12 @@ class FlashcardApp(QMainWindow):
         self.initUI()
         self.load_decks()
         self.setup_shortcuts()
+
+        QApplication.instance().installEventFilter(self)
+
+    def close_window(self):
+        # This method will be called when Ctrl+W or Cmd+W is pressed
+        self.close()
 
     def shuffle_deck(self):
         if self.current_deck:
@@ -357,6 +363,10 @@ class FlashcardApp(QMainWindow):
         edit_shortcut = QShortcut(QKeySequence("Ctrl+E"), self)
         edit_shortcut.activated.connect(self.edit_current_card)
 
+        # Add close window shortcut
+        self.closeWindowShortcut = QShortcut(QKeySequence.Close, self)
+        self.closeWindowShortcut.activated.connect(self.close)
+
         # For macOS, we need to set up additional shortcuts using the Command key
         if sys.platform == "darwin":
             self.addCardShortcutMac = QShortcut(QKeySequence("Cmd+Shift+A"), self)
@@ -381,6 +391,10 @@ class FlashcardApp(QMainWindow):
             edit_shortcut_mac = QShortcut(QKeySequence("Cmd+E"), self)
             edit_shortcut_mac.activated.connect(self.edit_current_card)
 
+            # Add close window shortcut for macOS
+            self.closeWindowShortcutMac = QShortcut(QKeySequence.Close, self)
+            self.closeWindowShortcutMac.activated.connect(self.close)
+
     def edit_current_card(self):
         if not self.current_deck or self.current_card_index == -1:
             QMessageBox.warning(self, 'No Card', 'No card is currently selected for editing.')
@@ -396,6 +410,24 @@ class FlashcardApp(QMainWindow):
                 self.update_display()
             else:
                 QMessageBox.warning(self, 'Invalid Card', 'Both front and back of the card must have content.')
+
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.ShortcutOverride:
+            # Check if the key pressed is W and a modifier (Ctrl or Cmd) is also pressed
+            if (event.modifiers() & Qt.ControlModifier or event.modifiers() & Qt.MetaModifier) and event.key() == Qt.Key_W:
+                # Accept the event, indicating that we'll handle it
+                event.accept()
+                return True
+        return super().eventFilter(obj, event)
+
+    def keyPressEvent(self, event):
+        # Check if the pressed key combination is Ctrl+W (Cmd+W on macOS)
+        if event.matches(QKeySequence.Close):
+            self.close_window()
+            event.accept()
+        else:
+            super().keyPressEvent(event)
 
 def main():
     app = QApplication(sys.argv)
