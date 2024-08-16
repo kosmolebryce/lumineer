@@ -340,6 +340,14 @@ class FlashcardApp(QMainWindow):
             self.load_decks()
 
     def setup_shortcuts(self):
+        close_key = QKeySequence(Qt.CTRL + Qt.Key_W)  # This will be Command+W on macOS
+        self.closeWindowShortcut = QShortcut(close_key, self)
+        self.closeWindowShortcut.activated.connect(self.close)
+
+        # For compatibility, also keep the standard close shortcut
+        self.closeWindowShortcutStd = QShortcut(QKeySequence.Close, self)
+        self.closeWindowShortcutStd.activated.connect(self.close)
+
         # Existing shortcuts
         self.addCardShortcut = QShortcut(QKeySequence("Ctrl+Shift+A"), self)
         self.addCardShortcut.activated.connect(self.add_new_card)
@@ -362,10 +370,6 @@ class FlashcardApp(QMainWindow):
 
         edit_shortcut = QShortcut(QKeySequence("Ctrl+E"), self)
         edit_shortcut.activated.connect(self.edit_current_card)
-
-        # Add close window shortcut
-        self.closeWindowShortcut = QShortcut(QKeySequence.Close, self)
-        self.closeWindowShortcut.activated.connect(self.close)
 
         # For macOS, we need to set up additional shortcuts using the Command key
         if sys.platform == "darwin":
@@ -391,10 +395,6 @@ class FlashcardApp(QMainWindow):
             edit_shortcut_mac = QShortcut(QKeySequence("Cmd+E"), self)
             edit_shortcut_mac.activated.connect(self.edit_current_card)
 
-            # Add close window shortcut for macOS
-            self.closeWindowShortcutMac = QShortcut(QKeySequence.Close, self)
-            self.closeWindowShortcutMac.activated.connect(self.close)
-
     def edit_current_card(self):
         if not self.current_deck or self.current_card_index == -1:
             QMessageBox.warning(self, 'No Card', 'No card is currently selected for editing.')
@@ -411,20 +411,16 @@ class FlashcardApp(QMainWindow):
             else:
                 QMessageBox.warning(self, 'Invalid Card', 'Both front and back of the card must have content.')
 
-
     def eventFilter(self, obj, event):
         if event.type() == QEvent.ShortcutOverride:
-            # Check if the key pressed is W and a modifier (Ctrl or Cmd) is also pressed
             if (event.modifiers() & Qt.ControlModifier or event.modifiers() & Qt.MetaModifier) and event.key() == Qt.Key_W:
-                # Accept the event, indicating that we'll handle it
                 event.accept()
                 return True
         return super().eventFilter(obj, event)
 
     def keyPressEvent(self, event):
-        # Check if the pressed key combination is Ctrl+W (Cmd+W on macOS)
-        if event.matches(QKeySequence.Close):
-            self.close_window()
+        if event.matches(QKeySequence.Close) or (event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_W):
+            self.close()
             event.accept()
         else:
             super().keyPressEvent(event)

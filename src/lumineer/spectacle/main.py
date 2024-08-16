@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QLabel, QTextEdit, QRadioButton,
                              QPushButton, QButtonGroup, QShortcut)
 from PyQt5.QtGui import QPalette, QColor, QFont, QKeySequence
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QEvent
 
 class NMRAnalysisHelper:
     def __init__(self):
@@ -102,6 +102,7 @@ class NMRAnalyzerApp(QMainWindow):
         self.nmr_helper = NMRAnalysisHelper()
         self.init_ui()
         self.setup_shortcuts()
+        QApplication.instance().installEventFilter(self)
 
     def init_ui(self):
         self.setWindowTitle("NMR Analysis Helper")
@@ -232,9 +233,27 @@ class NMRAnalyzerApp(QMainWindow):
         return "\n".join(formatted_lines)
 
     def setup_shortcuts(self):
-        # Add close window shortcut for macOS
-        self.closeWindowShortcutMac = QShortcut(QKeySequence.Close, self)
-        self.closeWindowShortcutMac.activated.connect(self.close)
+        close_key = QKeySequence(Qt.CTRL + Qt.Key_W)  # This will be Command+W on macOS
+        self.closeWindowShortcut = QShortcut(close_key, self)
+        self.closeWindowShortcut.activated.connect(self.close)
+
+        # For compatibility, also keep the standard close shortcut
+        self.closeWindowShortcutStd = QShortcut(QKeySequence.Close, self)
+        self.closeWindowShortcutStd.activated.connect(self.close)
+    
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.ShortcutOverride:
+            if (event.modifiers() & Qt.ControlModifier or event.modifiers() & Qt.MetaModifier) and event.key() == Qt.Key_W:
+                event.accept()
+                return True
+        return super().eventFilter(obj, event)
+
+    def keyPressEvent(self, event):
+        if event.matches(QKeySequence.Close) or (event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_W):
+            self.close()
+            event.accept()
+        else:
+            super().keyPressEvent(event)
 
 def main():
     app = QApplication(sys.argv)

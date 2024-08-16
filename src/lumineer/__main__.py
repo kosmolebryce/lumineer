@@ -1,3 +1,4 @@
+# `src/lumineer/__main__.py`
 import sys
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, 
                              QPushButton, QDesktopWidget, QVBoxLayout, QLabel)

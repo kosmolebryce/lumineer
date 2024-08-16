@@ -1,3 +1,4 @@
+# `src/lumineer/scholar/__main__.py`
 from . import main
 from .main import main
 
