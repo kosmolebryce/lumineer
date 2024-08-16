@@ -1,3 +1,10 @@
 venv/
+scripts/
+dist/
+build/
+*.dist
+*.build
+*.dmg
+*.app
 .DS_Store
 __pycache__/

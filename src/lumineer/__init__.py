@@ -1,3 +1,3 @@
-from . import flashcards
+from . import flashcards, scholar, spectacle
 
-__all__ = ["flashcards"]
+__all__ = ["flashcards", "scholar", "spectacle"]

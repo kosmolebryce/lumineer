@@ -27,10 +27,11 @@ from PyQt5.QtWidgets import (
     QInputDialog,
     QDialog,
     QDialogButtonBox,
-    QSizePolicy
-)  # Added QInputDialog
+    QSizePolicy,
+    QShortcut
+)
 from PyQt5.QtCore import Qt, QCoreApplication
-from PyQt5.QtGui import QBrush, QColor, QPalette
+from PyQt5.QtGui import QBrush, QColor, QPalette, QKeySequence
 
 # Constants
 APP_NAME = "Lumineer"
@@ -43,14 +44,12 @@ class TodoItem(QListWidgetItem):
         super().__init__()
         self.setText(text)
         self.setCheckState(Qt.Checked if checked else Qt.Unchecked)
-        self.update_background()
+        self.update_style()
 
-    def update_background(self):
-        if self.checkState() == Qt.Checked:
-            self.setBackground(QBrush(QColor(200, 200, 200)))  # Light gray
-        else:
-            # self.setBackground(QBrush(QColor(51, 51, 51)))  # White
-            pass
+    def update_style(self):
+        font = self.font()
+        font.setStrikeOut(self.checkState() == Qt.Checked)
+        self.setFont(font)
 
 class Managyr:
     def __init__(
@@ -275,6 +274,7 @@ class ManagyrApp(QMainWindow):
         self.manager = manager
         self.setWindowTitle("Scholar - Lumineer")
         self.initUI()
+        self.setup_shortcuts()
         
 
     def initUI(self):
@@ -471,11 +471,10 @@ class ManagyrApp(QMainWindow):
         for button_text, slot in [
             ("Refresh Preview", self.update_preview),
             ("Save Record", self.save_current_record),
-            # ("Exit", self.exit_program)
         ]:
             button = QPushButton(button_text)
             button.clicked.connect(slot)
-            button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)  # Fixed size policy
+            button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
             button_layout.addWidget(button)
             button_layout.addSpacing(10)  # Add spacing between buttons
 
@@ -493,23 +492,25 @@ class ManagyrApp(QMainWindow):
         self.todoList = QListWidget()
         self.todoList.setSelectionMode(QListWidget.SingleSelection)
         self.todoList.itemChanged.connect(self.todo_item_changed)
+        
+        # Set a specific style for the todoList
+        self.todoList.setStyleSheet("""
+            QListWidget {
+                background-color: #555;
+                color: #EEE;
+                border: 1px solid #666;
+                border-radius: 4px;
+            }
+            QListWidget::item:selected {
+                background-color: rgba(200, 200, 255, 100);
+                color: #000;
+            }
+            QListWidget::item:hover {
+                background-color: rgba(200, 200, 255, 50);
+            }
+        """)
+        
         layout.addWidget(self.todoList)
-        
-        todo_button_layout = QHBoxLayout()
-        todo_button_layout.setAlignment(Qt.AlignLeft)  # Align buttons to the left
-        
-        for button_text, slot in [
-            ("Add", self.add_todo),
-            ("Edit", self.edit_todo),
-            ("Delete", self.delete_todo)
-        ]:
-            button = QPushButton(button_text)
-            button.clicked.connect(slot)
-            button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)  # Fixed size policy
-            todo_button_layout.addWidget(button)
-            todo_button_layout.addSpacing(10)  # Add spacing between buttons
-        
-        layout.addLayout(todo_button_layout)
         
         # Add stretch to push everything to the top
         layout.addStretch(1)
@@ -551,7 +552,7 @@ class ManagyrApp(QMainWindow):
                 })
 
     def todo_item_changed(self, item):
-        item.update_background()  # Update background when item is checked/unchecked
+        item.update_style()  # Update style when item is checked/unchecked
         index = self.todoList.row(item)
         self.manager.update_todo(index, {
             'text': item.text(),
@@ -1331,6 +1332,11 @@ class ManagyrApp(QMainWindow):
                 item = QListWidgetItem(f"{cls['course_title']} ({cls['semester']})")
                 item.setData(Qt.UserRole, json.dumps(cls))
                 self.gradebookList.addItem(item)
+        
+    def setup_shortcuts(self):
+        # Add close window shortcut for macOS
+        self.closeWindowShortcutMac = QShortcut(QKeySequence.Close, self)
+        self.closeWindowShortcutMac.activated.connect(self.close)
 
 def main():
     # Ensure high DPI scaling is handled correctly
