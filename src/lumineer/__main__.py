@@ -133,7 +133,7 @@ class LumineerLauncher(QMainWindow):
     def keyPressEvent(self, event):
         # This method will catch key events for the main window
         if event.matches(QKeySequence.Quit):
-            self.close()
+            self.closeEvent()
             event.accept()
         else:
             super().keyPressEvent(event)

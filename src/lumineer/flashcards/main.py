@@ -5,6 +5,8 @@ import os
 import random
 import json
 import markdown
+from appdirs import user_data_dir, user_config_dir
+from pathlib import Path
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout,
                              QComboBox, QTextEdit, QPushButton, QFileDialog,
                              QInputDialog, QMessageBox, QMainWindow, QDialog,
@@ -12,14 +14,12 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout,
                              QButtonGroup)
 from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtGui import QKeyEvent, QKeySequence, QFont
-from appdirs import user_data_dir, user_config_dir
 
 APP_NAME = "Lumineer"
-APP_AUTHOR = "kosmolebryce"  # Replace with your name or organization
-APP_DATA_DIR = user_data_dir(APP_NAME, APP_AUTHOR)
-APP_CONFIG_DIR = user_config_dir(APP_NAME, APP_AUTHOR)
-DECKS_DIR = os.path.join(APP_DATA_DIR, "Flashcards", "Decks")
-
+APP_AUTHOR = "kosmolebryce"
+APP_DATA_DIR = Path(user_data_dir(APP_NAME, APP_AUTHOR))
+APP_CONFIG_DIR = Path(user_config_dir(APP_NAME, APP_AUTHOR))
+DECKS_DIR = APP_DATA_DIR / "Flashcards" / "Decks"
 
 class MarkdownTextEdit(QTextEdit):
     def __init__(self, *args, **kwargs):
@@ -124,7 +124,6 @@ class FlashcardApp(QMainWindow):
         QApplication.instance().installEventFilter(self)
 
     def close_window(self):
-        # This method will be called when Ctrl+W or Cmd+W is pressed
         self.close()
 
     def shuffle_deck(self):
@@ -179,7 +178,7 @@ class FlashcardApp(QMainWindow):
         layout.addLayout(button_layout)
 
     def ensure_app_dirs(self):
-        os.makedirs(DECKS_DIR, exist_ok=True)
+        DECKS_DIR.mkdir(parents=True, exist_ok=True)
 
     def load_decks(self):
         self.deck_dropdown.clear()
@@ -283,10 +282,10 @@ class FlashcardApp(QMainWindow):
             json.dump(self.current_deck, f)
 
     def add_new_card(self):
-        if not self.current_deck_name:
+        if not self.current_deck_name or not self.current_deck:
             QMessageBox.warning(self, 'No Deck Selected', 'Please select or create a deck first.')
             return
-
+            
         dialog = CardDialog(parent=self)
         if dialog.exec_():
             front, back = dialog.get_card_content()
