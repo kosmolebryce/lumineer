@@ -1297,7 +1297,6 @@ class ManagyrApp(QMainWindow):
         else:
             self.previewPane.setText("Name: N/A\nAge: N/A\nMajor: N/A")
 
-    # NEW: Convert percentage to letter grade
     def convert_percentage_to_letter_grade(self, percentage):
         if percentage >= 92.5:
             return "A"

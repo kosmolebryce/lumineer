@@ -1,3 +1,4 @@
-from . import main
+# src/lumineer/alight/__init__.py
+from .core import create_alight
 
-__all__ = ["main"]
+alight = create_alight()

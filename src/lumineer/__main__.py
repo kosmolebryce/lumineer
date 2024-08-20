@@ -12,7 +12,6 @@ APP_NAME = "Lumineer"
 APP_AUTHOR = "kosmolebryce"
 APP_DATA_DIR = Path(user_data_dir(APP_NAME, APP_AUTHOR))
 ALIGHT_DIR = APP_DATA_DIR / "Alight"
-ALIGHT_DB_FILE = "Alight.json"
 
 class LumineerLauncher(QMainWindow):
     def __init__(self):
@@ -51,9 +50,9 @@ class LumineerLauncher(QMainWindow):
 
         buttons = [
             ('🗂️', self.launch_flash, 'flash'),
-            ('💡', self.launch_scholar, 'Scholar'),
+            ('📓', self.launch_scholar, 'Scholar'),
+            ('💡', self.launch_alight, 'Alight'),
             ('💎', self.launch_spectacle, 'Spectacle'),
-            ('🧠', self.launch_alight, 'Alight'),
             ('🚪', self.close, 'Exit')
         ]
 
@@ -112,10 +111,11 @@ class LumineerLauncher(QMainWindow):
         self.spectacle_app.show()
 
     def launch_alight(self):
-        from lumineer.alight.main import AlightApp
+        from lumineer.alight.gui import AlightGUI
+        from lumineer.alight.core import KnowledgeNode
         ALIGHT_DIR.mkdir(parents=True, exist_ok=True)
-        db_path = ALIGHT_DIR / ALIGHT_DB_FILE
-        self.alight_app = AlightApp(str(db_path))
+        # db_path = ALIGHT_DIR / ALIGHT_DB_FILE
+        self.alight_app = AlightGUI()
         self.alight_app.show()
 
     def position_window(self):
