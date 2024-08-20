@@ -4,6 +4,15 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout,
                              QPushButton, QDesktopWidget, QVBoxLayout, QLabel)
 from PyQt5.QtCore import Qt, QSize, QEvent, QPoint
 from PyQt5.QtGui import QFont, QKeySequence, QMouseEvent
+from appdirs import user_data_dir
+from pathlib import Path
+
+# Constants
+APP_NAME = "Lumineer"
+APP_AUTHOR = "kosmolebryce"
+APP_DATA_DIR = Path(user_data_dir(APP_NAME, APP_AUTHOR))
+ALIGHT_DIR = APP_DATA_DIR / "Alight"
+ALIGHT_DB_FILE = "Alight.json"
 
 class LumineerLauncher(QMainWindow):
     def __init__(self):
@@ -41,9 +50,10 @@ class LumineerLauncher(QMainWindow):
         button_layout.setContentsMargins(1, 1, 1, 1)
 
         buttons = [
-            ('🗂️', self.launch_flashcards, 'Flashcards'),
+            ('🗂️', self.launch_flash, 'flash'),
             ('💡', self.launch_scholar, 'Scholar'),
             ('💎', self.launch_spectacle, 'Spectacle'),
+            ('🧠', self.launch_alight, 'Alight'),
             ('🚪', self.close, 'Exit')
         ]
 
@@ -60,7 +70,7 @@ class LumineerLauncher(QMainWindow):
             }
         """)
 
-        width = 200  # Adjust as needed
+        width = 250  # Adjust as needed
         height = 70  # Adjust as needed
         self.setFixedSize(QSize(width, height))
         self.position_window()
@@ -85,10 +95,10 @@ class LumineerLauncher(QMainWindow):
         
         return button
 
-    def launch_flashcards(self):
-        from lumineer.flashcards.main import FlashcardApp
-        self.flashcards_app = FlashcardApp()
-        self.flashcards_app.show()
+    def launch_flash(self):
+        from lumineer.flash.main import FlashcardApp
+        self.flash_app = FlashcardApp()
+        self.flash_app.show()
 
     def launch_scholar(self):
         from lumineer.scholar.main import ManagyrApp, Managyr
@@ -101,13 +111,20 @@ class LumineerLauncher(QMainWindow):
         self.spectacle_app = NMRAnalyzerApp()
         self.spectacle_app.show()
 
+    def launch_alight(self):
+        from lumineer.alight.main import AlightApp
+        ALIGHT_DIR.mkdir(parents=True, exist_ok=True)
+        db_path = ALIGHT_DIR / ALIGHT_DB_FILE
+        self.alight_app = AlightApp(str(db_path))
+        self.alight_app.show()
+
     def position_window(self):
         screen = QDesktopWidget().screenNumber(QDesktopWidget().cursor().pos())
         screen_size = QDesktopWidget().screenGeometry(screen)
         size = self.geometry()
         
         x = screen_size.width() - size.width() - 10
-        y = screen_size.height() - size.height() - 10
+        y = screen_size.height() - size.height() - 100
         
         self.move(x, y)
 

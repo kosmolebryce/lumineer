@@ -7,7 +7,7 @@ if __name__ == "__main__":
     current_dir = os.path.dirname(os.path.abspath(__file__))
     
     # Construct the command to run the Lumineer package
-    lumineer_command = [sys.executable, "-m", "lumineer.flashcards"]
+    lumineer_command = [sys.executable, "-m", "lumineer.flash"]
     
     # Use subprocess to run Lumineer without showing a console
     if sys.platform.startswith('win'):

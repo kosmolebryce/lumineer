@@ -1,4 +1,4 @@
-# `src/lumineer/flashcards/__main__.py`
+# `src/lumineer/flash/__main__.py`
 from .main import main
 
 if __name__ == "__main__":

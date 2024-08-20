@@ -1,7 +1,7 @@
 lumineer
 ├── README.md
 ├── data
-│   └── flashcards.json
+│   └── flash.json
 ├── dist
 │   ├── lumineer-0.0.0-py3-none-any.whl
 │   └── lumineer-0.0.0.tar.gz
@@ -10,7 +10,7 @@ lumineer
 ├── src
 │   └── lumineer
 │       ├── __init__.py
-│       ├── flashcards
+│       ├── flash
 │       │   ├── __init__.py
 │       │   ├── __main__.py
 │       │   └── main.py

@@ -1,5 +1,4 @@
-# `lumineer/src/lumineer/flashcards/main.py`
-
+# `lumineer/src/lumineer/flash/main.py`
 import sys
 import os
 import random
@@ -19,7 +18,7 @@ APP_NAME = "Lumineer"
 APP_AUTHOR = "kosmolebryce"
 APP_DATA_DIR = Path(user_data_dir(APP_NAME, APP_AUTHOR))
 APP_CONFIG_DIR = Path(user_config_dir(APP_NAME, APP_AUTHOR))
-DECKS_DIR = APP_DATA_DIR / "Flashcards" / "Decks"
+DECKS_DIR = APP_DATA_DIR / "flash" / "Decks"
 
 class MarkdownTextEdit(QTextEdit):
     def __init__(self, *args, **kwargs):
@@ -135,7 +134,7 @@ class FlashcardApp(QMainWindow):
     
     def initUI(self):
         self.setGeometry(100, 100, 400, 300)
-        self.setWindowTitle("Flashcards - Lumineer") 
+        self.setWindowTitle("Lumineer - Flash") 
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -282,7 +281,7 @@ class FlashcardApp(QMainWindow):
             json.dump(self.current_deck, f)
 
     def add_new_card(self):
-        if not self.current_deck_name or not self.current_deck:
+        if not self.current_deck_name:
             QMessageBox.warning(self, 'No Deck Selected', 'Please select or create a deck first.')
             return
             
@@ -348,7 +347,7 @@ class FlashcardApp(QMainWindow):
         self.closeWindowShortcutStd.activated.connect(self.close)
 
         # Existing shortcuts
-        self.addCardShortcut = QShortcut(QKeySequence("Ctrl+Shift+A"), self)
+        self.addCardShortcut = QShortcut(QKeySequence("Ctrl+Shift+I"), self)
         self.addCardShortcut.activated.connect(self.add_new_card)
 
         self.newDeckShortcut = QShortcut(QKeySequence("Ctrl+Shift+N"), self)
@@ -372,7 +371,7 @@ class FlashcardApp(QMainWindow):
 
         # For macOS, we need to set up additional shortcuts using the Command key
         if sys.platform == "darwin":
-            self.addCardShortcutMac = QShortcut(QKeySequence("Cmd+Shift+A"), self)
+            self.addCardShortcutMac = QShortcut(QKeySequence("Cmd+Shift+I"), self)
             self.addCardShortcutMac.activated.connect(self.add_new_card)
 
             self.newDeckShortcutMac = QShortcut(QKeySequence("Cmd+Shift+N"), self)
