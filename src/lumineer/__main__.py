@@ -165,12 +165,12 @@ class LumineerLauncher(QMainWindow):
         return True
 
     def mousePressEvent(self, event: QMouseEvent):
-        self.oldPos = event.globalPos()
+        self.oldPos = event.globalPosition().toPoint()
 
     def mouseMoveEvent(self, event: QMouseEvent):
-        delta = QPoint(event.globalPos() - self.oldPos)
+        delta = QPoint(event.globalPosition().toPoint() - self.oldPos)
         self.move(self.x() + delta.x(), self.y() + delta.y())
-        self.oldPos = event.globalPos()
+        self.oldPos = event.globalPosition().toPoint()
 
     def ensure_on_top(self):
         self.raise_()
