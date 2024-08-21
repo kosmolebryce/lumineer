@@ -121,27 +121,42 @@ class AlightGUI(QMainWindow):
         self.node_radio.toggled.connect(self.toggle_content_field)
         self.leaf_radio.toggled.connect(self.toggle_content_field)
 
-        # Content input field
+        # Content input field and Markdown view
         content_layout = QVBoxLayout()
         content_layout.addWidget(QLabel("Content:"))
+
+        # Create a vertical splitter for content input and markdown view
+        self.content_splitter = QSplitter(Qt.Orientation.Vertical)
         self.content_input = QTextEdit()
         self.markdown_view = MarkdownTextEdit()
-        content_layout.addWidget(self.content_input)
-        content_layout.addWidget(self.markdown_view)
+        self.content_splitter.addWidget(self.content_input)
+        self.content_splitter.addWidget(self.markdown_view)
+
+        content_layout.addWidget(self.content_splitter)
         right_layout.addLayout(content_layout)
 
         # CRUD buttons
         button_layout = QHBoxLayout()
-        for text, func in [("Create", self.create_entry),
-                           ("Update", self.update_entry),
-                           ("Delete", self.delete_entry)]:
-            btn = QPushButton(text)
-            btn.clicked.connect(func)
-            button_layout.addWidget(btn)
+        create_btn = QPushButton("Create")
+        create_btn.setToolTip("Create new node/leaf (Ctrl+N)")
+        create_btn.clicked.connect(self.create_entry)
+        button_layout.addWidget(create_btn)
+
+        update_btn = QPushButton("Update")
+        update_btn.setToolTip("Update selected node/leaf (Ctrl+S)")
+        update_btn.clicked.connect(self.update_entry)
+        button_layout.addWidget(update_btn)
+
+        delete_btn = QPushButton("Delete")
+        delete_btn.setToolTip("Delete selected node/leaf (Ctrl+D)")
+        delete_btn.clicked.connect(self.delete_entry)
+        button_layout.addWidget(delete_btn)
+
         right_layout.addLayout(button_layout)
 
         # Set initial sizes for splitter
-        self.splitter.setSizes([450, 630])  # Adjust these values as needed
+        self.splitter.setSizes([360, 720])  # Adjust these values as needed
+        self.content_splitter.setSizes([70, 750])
 
         # self.apply_theme()
         self.refresh_tree() 
@@ -212,7 +227,6 @@ class AlightGUI(QMainWindow):
         is_actual_leaf_selected = self.is_leaf_selected()
         
         self.content_input.setEnabled(True)
-        self.content_input.setMaximumHeight(100 if (is_leaf_radio_checked and is_actual_leaf_selected) else QWIDGETSIZE_MAX)
         self.markdown_view.setVisible(is_leaf_radio_checked and is_actual_leaf_selected)
         
         if is_leaf_radio_checked:
@@ -224,7 +238,6 @@ class AlightGUI(QMainWindow):
                 item = selected_items[0]
                 path = self.get_item_path(item)
                 
-                # Safeguard against treating leaves as nodes
                 node = self.get_node_from_path(path)
                 if node is None:
                     self.content_input.setPlainText("")
@@ -298,7 +311,7 @@ class AlightGUI(QMainWindow):
         while item is not None and item != self.tree.invisibleRootItem():
             path.insert(0, item.text(0))
             item = item.parent()
-        return '.'.join(path[1:])  # Exclude 'alight' from the path
+        return '.'.join(path)  # Exclude 'alight' from the path
 
     def on_item_clicked(self, item, column):
         if item is None:
@@ -311,9 +324,10 @@ class AlightGUI(QMainWindow):
         logging.debug(f"Clicked item: {path}, Is leaf: {content is not None}")
         
         # Check file system state
-        full_path = os.path.join(BASE_DIR, path.replace('.', os.sep))
+        full_path = os.path.join(BASE_DIR, path[7:].replace('.', os.sep))
         file_path = full_path + '.py'
         dir_path = full_path
+
         
         file_exists = os.path.exists(file_path)
         dir_exists = os.path.isdir(dir_path)
@@ -370,7 +384,7 @@ class AlightGUI(QMainWindow):
 
     def get_node_from_path(self, path):
         node = self.alight
-        parts = path.split('.')
+        parts = path.split('.')[1:]  # Skip the 'alight' part
         
         for part in parts:
             try:
@@ -378,7 +392,7 @@ class AlightGUI(QMainWindow):
                 node = getattr(node, part)
             except AttributeError as e:
                 # Check if this part represents a leaf
-                leaf_path = os.path.join(BASE_DIR, path.replace('.', os.sep) + ".py")
+                leaf_path = os.path.join(BASE_DIR, '.'.join(parts).replace('.', os.sep) + ".py")
                 if os.path.exists(leaf_path):
                     logging.debug(f"Detected leaf instead of node for path: {path}")
                     return None  # Or handle this case appropriately
@@ -395,14 +409,14 @@ class AlightGUI(QMainWindow):
         logging.debug(f"Attempting to create {'leaf' if is_leaf else 'node'}: {path}")
         
         try:
-            parts = path.split('.')
+            parts = path.split('.')[1:]  # Skip the 'alight' part
             current = self.alight
             for part in parts[:-1]:
                 logging.debug(f"Traversing to {current._path}.{part}")
                 current = getattr(current, part)
             
             name = parts[-1]
-            full_path = os.path.join(BASE_DIR, path.replace('.', os.sep))
+            full_path = os.path.join(BASE_DIR, '.'.join(parts).replace('.', os.sep))
             
             # Check the state of neighboring entries
             parent_dir = os.path.dirname(full_path)
@@ -508,8 +522,9 @@ class AlightGUI(QMainWindow):
         is_leaf = self.leaf_radio.isChecked()
         content = self.content_input.toPlainText() if is_leaf else ""
         try:
-            parent_path, name = path.rsplit('.', 1) if '.' in path else ('', path)
-            parent_node = self.get_node_from_path(parent_path)
+            parts = path.split('.')[1:]  # Skip the 'alight' part
+            parent_path, name = '.'.join(parts[:-1]), parts[-1]
+            parent_node = self.get_node_from_path('alight.' + parent_path)
             if is_leaf:
                 parent_node.update_leaf(name, content)
             else:
@@ -527,21 +542,21 @@ class AlightGUI(QMainWindow):
 
     def delete_entry(self):
         path = self.path_input.text()
-        if not path:
-            QMessageBox.warning(self, "Error", "No path specified for deletion.")
+        if not path or path == 'alight':
+            QMessageBox.warning(self, "Error", "Invalid path specified for deletion.")
             return
 
-        # Confirmation dialogue
-        reply = QMessageBox.question(self, 'Confirm Deletion',
-                                     f"Are you sure you want to delete '{path}'?",
-                                     QMessageBox.StandardButton.Yes | 
-                                     QMessageBox.StandardButton.No,
-                                     QMessageBox.StandardButton.No)
-
-        if reply == QMessageBox.StandardButton.Yes:
+        # Confirmation dialog
+        confirm = QMessageBox.question(self, "Confirm Deletion",
+                                    f"Are you sure you want to delete '{path}'?",
+                                    QMessageBox.StandardButton.Yes | 
+                                    QMessageBox.StandardButton.No)
+        
+        if confirm == QMessageBox.StandardButton.Yes:
             try:
-                parent_path, name = path.rsplit('.', 1) if '.' in path else ('', path)
-                parent_node = self.get_node_from_path(parent_path)
+                parts = path.split('.')[1:]  # Skip the 'alight' part
+                parent_path, name = '.'.join(parts[:-1]), parts[-1]
+                parent_node = self.get_node_from_path('alight.' + parent_path)
                 parent_node.delete(name)
                 self.refresh_tree()
                 self.path_input.clear()
@@ -550,22 +565,42 @@ class AlightGUI(QMainWindow):
                 QMessageBox.information(self, "Success", "Entry deleted.")
             except Exception as e:
                 QMessageBox.warning(self, "Error", f"Failed to delete entry: {str(e)}")
-        
+            
             self.verify_tree_integrity()
             self.cleanup_filesystem()
         else:
-            QMessageBox.information(self, "Cancelled", "Deletion cancelled.")
+            QMessageBox.information(self, "Deletion Cancelled", 
+                                    "The delete operation was cancelled.")
 
     def setup_shortcuts(self):
         # Close window shortcut (Cmd+W on macOS, Ctrl+W on others)
         close_window_shortcut = QShortcut(QKeySequence.StandardKey.Close, self)
         close_window_shortcut.activated.connect(self.close)
 
+        # New node/leaf shortcut (Ctrl+N)
+        new_shortcut = QShortcut(QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_N), self)
+        new_shortcut.activated.connect(self.create_entry)
+
+        # Delete shortcut (Ctrl+D)
+        delete_shortcut = QShortcut(QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_D), self)
+        delete_shortcut.activated.connect(self.delete_entry)
+
+        # Update shortcut (Ctrl+S)
+        update_shortcut = QShortcut(QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_S), self)
+        update_shortcut.activated.connect(self.update_entry)
+
     def keyPressEvent(self, event):
         if event.matches(QKeySequence.StandardKey.Quit):
             QApplication.instance().quit()
         elif event.matches(QKeySequence.StandardKey.Close):
             self.close()
+        elif event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+            if event.key() == Qt.Key.Key_N:
+                self.create_entry()
+            elif event.key() == Qt.Key.Key_D:
+                self.delete_entry()
+            elif event.key() == Qt.Key.Key_S:
+                self.update_entry()
         else:
             super().keyPressEvent(event)
 
