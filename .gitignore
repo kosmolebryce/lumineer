@@ -8,3 +8,4 @@ build/
 *.app
 .DS_Store
 __pycache__/
+alight_debug.log
