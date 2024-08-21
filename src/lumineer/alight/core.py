@@ -5,6 +5,11 @@ import sys
 from types import ModuleType
 import shutil
 
+import appdirs
+
+# Application data directory
+BASE_DIR = os.path.join(appdirs.user_data_dir(), "Lumineer", "Alight")
+
 class KnowledgeNode:
     def __init__(self, path):
         self._path = path
@@ -13,8 +18,7 @@ class KnowledgeNode:
         self._children = {}
 
     def _ensure_directory(self):
-        dir_path = os.path.join('src', 'lumineer', 'alight', 
-                                self._path.replace('.', os.sep))
+        dir_path = os.path.join(BASE_DIR, self._path.replace('.', os.sep))
         os.makedirs(dir_path, exist_ok=True)
         init_file = os.path.join(dir_path, '__init__.py')
         if not os.path.exists(init_file):
@@ -22,16 +26,17 @@ class KnowledgeNode:
                 f.write("# This is an auto-generated module\n")
 
     def _ensure_module(self):
+        module_name = f"alight.{self._path}" if self._path else "alight"
         try:
-            return importlib.import_module(f"lumineer.alight.{self._path}")
+            return importlib.import_module(module_name)
         except ImportError:
             spec = importlib.util.spec_from_file_location(
-                f"lumineer.alight.{self._path}",
-                os.path.join('src', 'lumineer', 'alight', 
-                             self._path.replace('.', os.sep), '__init__.py')
+                module_name,
+                os.path.join(BASE_DIR, self._path.replace('.', os.sep), 
+                             '__init__.py')
             )
             module = importlib.util.module_from_spec(spec)
-            sys.modules[f"lumineer.alight.{self._path}"] = module
+            sys.modules[module_name] = module
             spec.loader.exec_module(module)
             return module
 
@@ -68,12 +73,11 @@ class KnowledgeNode:
                 current = getattr(current, part)
             current.create_leaf(parts[-1], content)
         else:
-            file_path = os.path.join('src', 'lumineer', 'alight', 
-                                     self._path.replace('.', os.sep), 
+            file_path = os.path.join(BASE_DIR, self._path.replace('.', os.sep), 
                                      f"{name}.py")
             with open(file_path, 'w') as f:
                 f.write(f"content = '''{content}'''\n")
-            module_name = f"lumineer.alight.{self._path}.{name}"
+            module_name = f"alight.{self._path}.{name}" if self._path else f"alight.{name}"
             spec = importlib.util.spec_from_file_location(module_name, file_path)
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
