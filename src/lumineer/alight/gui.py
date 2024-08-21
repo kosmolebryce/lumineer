@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QMessageBox, QInputDialog, QShortcut, QRadioButton,
                              QButtonGroup)
 from PyQt5.QtGui import QFont, QKeySequence, QKeyEvent
-from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtCore import Qt, QEvent, QObject
 from PyQt5.QtWidgets import QWIDGETSIZE_MAX
 
 from lumineer.alight.core import BASE_DIR, create_alight, KnowledgeNode
@@ -28,6 +28,8 @@ class AlightGUI(QMainWindow):
         self.alight = create_alight()
         self.init_ui()
         self.setup_shortcuts()
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.activateWindow()
 
     def is_leaf_selected(self):
         selected_items = self.tree.selectedItems()
@@ -340,32 +342,39 @@ class AlightGUI(QMainWindow):
             QMessageBox.warning(self, "Error", f"Failed to delete entry: {str(e)}")
 
     def setup_shortcuts(self):
-        close_key = QKeySequence(Qt.CTRL + Qt.Key_W)  # This will be Command+W on macOS
-        self.closeWindowShortcut = QShortcut(close_key, self)
-        self.closeWindowShortcut.activated.connect(self.close)
-
-        # For compatibility, also keep the standard close shortcut
-        self.closeWindowShortcutStd = QShortcut(QKeySequence.Close, self)
-        self.closeWindowShortcutStd.activated.connect(self.close)
-    
-    def eventFilter(self, obj, event):
-        if event.type() == QEvent.ShortcutOverride:
-            if (event.modifiers() & Qt.ControlModifier or event.modifiers() & Qt.MetaModifier) and event.key() == Qt.Key_W:
-                event.accept()
-                return True
-        return super().eventFilter(obj, event)
+        # Close window shortcut (Cmd+W on macOS, Ctrl+W on others)
+        close_window_shortcut = QShortcut(QKeySequence.Close, self)
+        close_window_shortcut.activated.connect(self.close)
 
     def keyPressEvent(self, event):
-        if event.matches(QKeySequence.Close) or (event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_W):
+        if event.matches(QKeySequence.Quit):
+            QApplication.instance().quit()
+        elif event.matches(QKeySequence.Close):
             self.close()
-            event.accept()
         else:
             super().keyPressEvent(event)
 
+class ApplicationEventFilter(QObject):
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.KeyPress:
+            if event.matches(QKeySequence.Quit):
+                QApplication.instance().quit()
+                return True
+            elif event.matches(QKeySequence.Close) and isinstance(QApplication.activeWindow(), AlightGUI):
+                QApplication.activeWindow().close()
+                return True
+        return super().eventFilter(obj, event)
+
 def run():
     app = QApplication(sys.argv)
+    
+    # Set up application-wide event filter
+    event_filter = ApplicationEventFilter()
+    app.installEventFilter(event_filter)
+    
     ex = AlightGUI()
     ex.show()
+    
     sys.exit(app.exec_())
 
 def main():
