@@ -4,7 +4,7 @@ import re
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QLabel, QTextEdit, QRadioButton,
                              QPushButton, QButtonGroup)
-from PyQt6.QtGui import QPalette, QColor, QFont, QKeySequence, QShortcut
+from PyQt6.QtGui import QPalette, QColor, QFont, QKeySequence, QShortcut, QColorConstants
 from PyQt6.QtCore import Qt, QEvent
 
 class NMRAnalysisHelper:
@@ -112,7 +112,7 @@ class NMRAnalyzerApp(QMainWindow):
         self.setCentralWidget(central_widget)
 
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setAlignment(Qt.AlignLeft)
+        main_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         main_layout.setSpacing(10)
         main_layout.setContentsMargins(20, 20, 20, 20)
 
@@ -127,7 +127,7 @@ class NMRAnalyzerApp(QMainWindow):
         # Radio buttons for NMR type
         radio_layout = QHBoxLayout()
         radio_layout.setSpacing(10)
-        radio_layout.setAlignment(Qt.AlignLeft)
+        radio_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.radio_group = QButtonGroup(self)
         self.radio_1h = QRadioButton("1H NMR")
         self.radio_13c = QRadioButton("13C NMR")
@@ -154,18 +154,18 @@ class NMRAnalyzerApp(QMainWindow):
 
     def apply_dark_theme(self):
         dark_palette = QPalette()
-        dark_palette.setColor(QPalette.Window, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.WindowText, Qt.white)
-        dark_palette.setColor(QPalette.Base, QColor(25, 25, 25))
-        dark_palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.ToolTipBase, Qt.white)
-        dark_palette.setColor(QPalette.ToolTipText, Qt.white)
-        dark_palette.setColor(QPalette.Text, Qt.white)
-        dark_palette.setColor(QPalette.Button, QColor(53, 53, 53))
-        dark_palette.setColor(QPalette.ButtonText, Qt.white)
-        dark_palette.setColor(QPalette.BrightText, Qt.red)
-        dark_palette.setColor(QPalette.Highlight, QColor(255, 222, 152))
-        dark_palette.setColor(QPalette.HighlightedText, Qt.black)
+        dark_palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
+        dark_palette.setColor(QPalette.ColorRole.WindowText, QColorConstants.White)
+        dark_palette.setColor(QPalette.ColorRole.Base, QColor(25, 25, 25))
+        dark_palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
+        dark_palette.setColor(QPalette.ColorRole.ToolTipBase, QColorConstants.White)
+        dark_palette.setColor(QPalette.ColorRole.ToolTipText, QColorConstants.White)
+        dark_palette.setColor(QPalette.ColorRole.Text, QColorConstants.White)
+        dark_palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
+        dark_palette.setColor(QPalette.ColorRole.ButtonText, QColorConstants.White)
+        dark_palette.setColor(QPalette.ColorRole.BrightText, QColorConstants.Red)
+        dark_palette.setColor(QPalette.ColorRole.Highlight, QColor(255, 222, 152))
+        dark_palette.setColor(QPalette.ColorRole.HighlightedText, QColorConstants.Black)
 
         self.setPalette(dark_palette)
         self.setStyleSheet("""
@@ -193,8 +193,8 @@ class NMRAnalyzerApp(QMainWindow):
                 spacing: 5px;
             }
             QRadioButton::indicator {
-                width: 13px;
-                height: 13px;
+                width: 8px;
+                height: 8px;
             }
             QRadioButton::indicator:unchecked {
                 border: 2px solid #999999;
@@ -233,7 +233,7 @@ class NMRAnalyzerApp(QMainWindow):
         return "\n".join(formatted_lines)
 
     def setup_shortcuts(self):
-        close_key = QKeySequence(Qt.CTRL + Qt.Key_W)  # This will be Command+W on macOS
+        close_key = QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_W)  # This will be Command+W on macOS
         self.closeWindowShortcut = QShortcut(close_key, self)
         self.closeWindowShortcut.activated.connect(self.close)
 
@@ -243,13 +243,13 @@ class NMRAnalyzerApp(QMainWindow):
     
     def eventFilter(self, obj, event):
         if event.type() == QEvent.Type.ShortcutOverride:
-            if (event.modifiers() & Qt.ControlModifier or event.modifiers() & Qt.MetaModifier) and event.key() == Qt.Key_W:
+            if (event.modifiers() & Qt.KeyboardModifier.ControlModifier or event.modifiers() & Qt.KeyboardModifier.MetaModifier) and event.key() == Qt.Key.Key_W:
                 event.accept()
                 return True
         return super().eventFilter(obj, event)
 
     def keyPressEvent(self, event):
-        if event.matches(QKeySequence.StandardKey.Close) or (event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_W):
+        if event.matches(QKeySequence.StandardKey.Close) or (event.modifiers() & Qt.KeyboardModifier.ControlModifier and event.key() == Qt.Key.Key_W):
             self.close()
             event.accept()
         else:

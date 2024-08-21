@@ -31,9 +31,9 @@ class MarkdownTextEdit(QTextEdit):
 
 class TabFocusTextEdit(QTextEdit):
     def keyPressEvent(self, event: QKeyEvent):
-        if event.key() == Qt.Key_Tab:
+        if event.key() == Qt.Key.Key_Tab:
             self.focusNextChild()
-        elif event.key() == Qt.Key_Backtab:
+        elif event.key() == Qt.Key.Key_Backtab:
             self.focusPreviousChild()
         else:
             super().keyPressEvent(event)
@@ -65,16 +65,16 @@ class CardDialog(QDialog):
         self.back_text.setTabChangesFocus(True)
         layout.addWidget(self.back_text)
 
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
 
         # Set up keyboard shortcut
         if sys.platform == "darwin":  # macOS
-            self.shortcut = QShortcut(QKeySequence(Qt.CTRL + Qt.Key_Return), self)
+            self.shortcut = QShortcut(QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_Return), self)
         else:  # Windows/Linux
-            self.shortcut = QShortcut(QKeySequence(Qt.CTRL + Qt.Key_Return), self)
+            self.shortcut = QShortcut(QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_Return), self)
         self.shortcut.activated.connect(self.accept)
 
     def get_card_content(self):
@@ -99,7 +99,7 @@ class DeleteDialog(QDialog):
         layout.addWidget(self.radio_card)
         layout.addWidget(self.radio_deck)
 
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
@@ -338,7 +338,7 @@ class FlashcardApp(QMainWindow):
             self.load_decks()
 
     def setup_shortcuts(self):
-        close_key = QKeySequence(Qt.CTRL + Qt.Key_W)  # This will be Command+W on macOS
+        close_key = QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_W)  # This will be Command+W on macOS
         self.closeWindowShortcut = QShortcut(close_key, self)
         self.closeWindowShortcut.activated.connect(self.close)
 
@@ -411,13 +411,13 @@ class FlashcardApp(QMainWindow):
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.Type.ShortcutOverride:
-            if (event.modifiers() & Qt.ControlModifier or event.modifiers() & Qt.MetaModifier) and event.key() == Qt.Key_W:
+            if (event.modifiers() & Qt.KeyboardModifier.ControlModifier or event.modifiers() & Qt.KeyboardModifier.MetaModifier) and event.key() == Qt.Key.Key_W:
                 event.accept()
                 return True
         return super().eventFilter(obj, event)
 
     def keyPressEvent(self, event):
-        if event.matches(QKeySequence.StandardKey.Close) or (event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_W):
+        if event.matches(QKeySequence.StandardKey.Close) or (event.modifiers() & Qt.KeyboardModifier.ControlModifier and event.key() == Qt.Key.Key_W):
             self.close()
             event.accept()
         else:

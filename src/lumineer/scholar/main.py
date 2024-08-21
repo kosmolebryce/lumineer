@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 from PyQt6.QtWidgets import (
+    QAbstractItemView,
     QApplication,
     QFrame,
     QMainWindow,
@@ -432,8 +433,8 @@ class ManagyrApp(QMainWindow):
         
         # Create a form layout for input fields
         form_layout = QFormLayout()
-        form_layout.setFieldGrowthPolicy(QFormLayout.ExpandingFieldsGrow)
-        form_layout.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         form_layout.setVerticalSpacing(10)
         
         self.nameEntry = QLineEdit()
@@ -442,7 +443,7 @@ class ManagyrApp(QMainWindow):
         
         # Set size policies to expand horizontally
         for widget in (self.nameEntry, self.ageEntry, self.majorEntry):
-            widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         
         form_layout.addRow("Name:", self.nameEntry)
         form_layout.addRow("Age:", self.ageEntry)
@@ -456,7 +457,7 @@ class ManagyrApp(QMainWindow):
         # Create a QTextEdit for the preview pane with a custom size policy
         self.previewPane = QTextEdit()
         self.previewPane.setReadOnly(True)
-        self.previewPane.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.previewPane.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.previewPane.setMinimumHeight(60)
         self.previewPane.setMaximumHeight(100)
         layout.addWidget(self.previewPane)
@@ -466,7 +467,7 @@ class ManagyrApp(QMainWindow):
         
         # Button layout
         button_layout = QHBoxLayout()
-        button_layout.setAlignment(Qt.AlignLeft)  # Align buttons to the left
+        button_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)  # Align buttons to the left
         
         for button_text, slot in [
             ("Refresh Preview", self.update_preview),
@@ -474,7 +475,7 @@ class ManagyrApp(QMainWindow):
         ]:
             button = QPushButton(button_text)
             button.clicked.connect(slot)
-            button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+            button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
             button_layout.addWidget(button)
             button_layout.addSpacing(10)  # Add spacing between buttons
 
@@ -482,15 +483,15 @@ class ManagyrApp(QMainWindow):
         
         # Add separator
         separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setFrameShadow(QFrame.Sunken)
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setFrameShadow(QFrame.Shadow.Sunken)
         layout.addWidget(separator)
         
         # To-Do Section
         layout.addWidget(QLabel("To-Do List"))
         
         self.todoList = QListWidget()
-        self.todoList.setSelectionMode(QListWidget.SingleSelection)
+        self.todoList.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
         self.todoList.itemChanged.connect(self.todo_item_changed)
         
         # Set a specific style for the todoList
@@ -640,7 +641,7 @@ class ManagyrApp(QMainWindow):
 
         # Buttons Layout
         button_layout = QHBoxLayout()
-        button_layout.setAlignment(Qt.AlignLeft)
+        button_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         for button_text, slot in [
             ("Add Class", self.add_class),
@@ -650,7 +651,7 @@ class ManagyrApp(QMainWindow):
         ]:
             button = QPushButton(button_text)
             button.clicked.connect(slot)
-            button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+            button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
             button_layout.addWidget(button)
             button_layout.addSpacing(10)  # Add spacing between buttons
 
@@ -687,13 +688,13 @@ class ManagyrApp(QMainWindow):
         )
         self.assignmentsTable.horizontalHeader().setStretchLastSection(True)
         self.assignmentsTable.horizontalHeader().setSectionResizeMode(
-            QHeaderView.Stretch
+            QHeaderView.ResizeMode.Stretch
         )
         layout.addWidget(self.assignmentsTable)
 
         # Button layout
         button_layout = QHBoxLayout()
-        button_layout.setAlignment(Qt.AlignLeft)
+        button_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         for button_text, slot in [
             ("Add Assignment", self.add_assignment),
@@ -702,7 +703,7 @@ class ManagyrApp(QMainWindow):
         ]:
             button = QPushButton(button_text)
             button.clicked.connect(slot)
-            button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+            button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
             button_layout.addWidget(button)
             button_layout.addSpacing(10)  # Add spacing between buttons
 
@@ -1146,15 +1147,15 @@ class ManagyrApp(QMainWindow):
         
         # Create and set items for the overall grade row
         overall_label = QTableWidgetItem("Overall Grade")
-        overall_label.setFlags(overall_label.flags() & ~Qt.ItemIsEditable)
+        overall_label.setFlags(overall_label.flags() & ~Qt.ItemFlag.ItemIsEditable)
         self.assignmentsTable.setItem(row_count - 1, 0, overall_label)
         
         overall_points_possible = QTableWidgetItem(str(total_points_possible))
-        overall_points_possible.setFlags(overall_points_possible.flags() & ~Qt.ItemIsEditable)
+        overall_points_possible.setFlags(overall_points_possible.flags() & ~Qt.ItemFlag.ItemIsEditable)
         self.assignmentsTable.setItem(row_count - 1, 1, overall_points_possible)
         
         overall_points_actual = QTableWidgetItem(str(total_points_actual))
-        overall_points_actual.setFlags(overall_points_actual.flags() & ~Qt.ItemIsEditable)
+        overall_points_actual.setFlags(overall_points_actual.flags() & ~Qt.ItemFlag.ItemIsEditable)
         self.assignmentsTable.setItem(row_count - 1, 2, overall_points_actual)
         
         if total_points_possible > 0:
@@ -1162,16 +1163,16 @@ class ManagyrApp(QMainWindow):
             overall_letter_grade = self.convert_percentage_to_letter_grade(overall_grade_percent)
             
             grade_percent_item = QTableWidgetItem(f"{overall_grade_percent:.2f}%")
-            grade_percent_item.setFlags(grade_percent_item.flags() & ~Qt.ItemIsEditable)
+            grade_percent_item.setFlags(grade_percent_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             self.assignmentsTable.setItem(row_count - 1, 3, grade_percent_item)
             
             letter_grade_item = QTableWidgetItem(overall_letter_grade)
-            letter_grade_item.setFlags(letter_grade_item.flags() & ~Qt.ItemIsEditable)
+            letter_grade_item.setFlags(letter_grade_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             self.assignmentsTable.setItem(row_count - 1, 4, letter_grade_item)
         else:
             for col in range(3, 5):
                 empty_item = QTableWidgetItem("N/A")
-                empty_item.setFlags(empty_item.flags() & ~Qt.ItemIsEditable)
+                empty_item.setFlags(empty_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 self.assignmentsTable.setItem(row_count - 1, col, empty_item)
         
         # Apply styling if requested
@@ -1333,7 +1334,7 @@ class ManagyrApp(QMainWindow):
                 self.gradebookList.addItem(item)
         
     def setup_shortcuts(self):
-        close_key = QKeySequence(Qt.CTRL + Qt.Key_W)  # This will be Command+W on macOS
+        close_key = QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_W)  # This will be Command+W on macOS
         self.closeWindowShortcut = QShortcut(close_key, self)
         self.closeWindowShortcut.activated.connect(self.close)
 
@@ -1343,13 +1344,13 @@ class ManagyrApp(QMainWindow):
     
     def eventFilter(self, obj, event):
         if event.type() == QEvent.Type.ShortcutOverride:
-            if (event.modifiers() & Qt.ControlModifier or event.modifiers() & Qt.MetaModifier) and event.key() == Qt.Key_W:
+            if (event.modifiers() & Qt.KeyboardModifier.ControlModifier or event.modifiers() & Qt.KeyboardModifier.MetaModifier) and event.key() == Qt.Key.Key_W:
                 event.accept()
                 return True
         return super().eventFilter(obj, event)
 
     def keyPressEvent(self, event):
-        if event.matches(QKeySequence.StandardKey.Close) or (event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_W):
+        if event.matches(QKeySequence.StandardKey.Close) or (event.modifiers() & Qt.KeyboardModifier.ControlModifier and event.key() == Qt.Key.Key_W):
             self.close()
             event.accept()
         else:
