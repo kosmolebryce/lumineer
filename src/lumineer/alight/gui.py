@@ -198,7 +198,7 @@ class AlightGUI(QMainWindow):
                 # Safeguard against treating leaves as nodes
                 node = self.get_node_from_path(path)
                 if node is None:
-                    self.content_input.setPlainText("(This is a leaf. Select it in the tree to view its contents.)")
+                    self.content_input.setPlainText("")
                 else:
                     children = node.read()
                     if children:
@@ -207,7 +207,7 @@ class AlightGUI(QMainWindow):
                     else:
                         self.content_input.setPlainText("(This node is empty)")
             else:
-                self.content_input.setPlainText("(This is a node. Select it in the tree to view its contents.)")
+                self.content_input.setPlainText("")
 
     def refresh_tree(self):
         def store_expansion_state(item):
