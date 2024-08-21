@@ -6,9 +6,9 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QLabel, QLineEdit, QPushButton,
                              QTextEdit, QTreeWidget, QTreeWidgetItem,
                              QMessageBox, QInputDialog, QRadioButton,
-                             QButtonGroup)
-from PyQt6.QtGui import QFont, QKeySequence, QKeyEvent, QShortcut
-from PyQt6.QtCore import Qt, QEvent, QObject
+                             QButtonGroup, QSplitter, QTextBrowser)
+from PyQt6.QtGui import QDesktopServices, QFont, QKeySequence, QKeyEvent, QShortcut
+from PyQt6.QtCore import Qt, QEvent, QObject, QUrl, pyqtSignal
 from PyQt6.QtWidgets import QWIDGETSIZE_MAX
 
 from lumineer.alight.core import BASE_DIR, create_alight, KnowledgeNode
@@ -17,14 +17,23 @@ import markdown
 logging.basicConfig(filename='alight_debug.log', level=logging.DEBUG, 
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-class MarkdownTextEdit(QTextEdit):
+class MarkdownTextEdit(QTextBrowser):
+    linkClicked = pyqtSignal(str)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setReadOnly(True)
+        self.setReadOnly(True)        
+        self.setOpenExternalLinks(False)
+        self.anchorClicked.connect(self._handle_link_click)
 
     def setMarkdownText(self, text):
         html = markdown.markdown(text)
         self.setHtml(html)
+
+    def _handle_link_click(self, url):
+        url_string = url.toString()
+        self.linkClicked.emit(url_string)
+        QDesktopServices.openUrl(QUrl(url_string))
 
 class AlightGUI(QMainWindow):
     def __init__(self):
@@ -67,22 +76,27 @@ class AlightGUI(QMainWindow):
 
     def init_ui(self):
         self.setWindowTitle("Lumineer - Alight")
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 1080, 810)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QHBoxLayout(central_widget)
 
+        # Create a splitter
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        main_layout.addWidget(self.splitter)
+
         # Left side: Tree view of the knowledge base
         self.tree = QTreeWidget()
         self.tree.setHeaderLabel("Knowledge Structure")
         self.tree.itemClicked.connect(self.on_item_clicked)
-        self.tree.currentItemChanged.connect(self.on_selection_changed)  # Add this line
-        main_layout.addWidget(self.tree, 1)
+        self.tree.currentItemChanged.connect(self.on_selection_changed)
+        self.splitter.addWidget(self.tree)
 
         # Right side: CRUD operations
-        right_layout = QVBoxLayout()
-        main_layout.addLayout(right_layout, 2)
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        self.splitter.addWidget(right_widget)
 
         # Path input field
         path_layout = QHBoxLayout()
@@ -126,57 +140,72 @@ class AlightGUI(QMainWindow):
             button_layout.addWidget(btn)
         right_layout.addLayout(button_layout)
 
-        self.apply_dark_theme()
-        self.refresh_tree()
+        # Set initial sizes for splitter
+        self.splitter.setSizes([450, 630])  # Adjust these values as needed
 
-    def apply_dark_theme(self):
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #2E2E2E;
-                color: #FFFFFF;
-                font-size: 12px;
-            }
-            QLineEdit, QTextEdit {
-                background-color: #3E3E3E;
-                border: 1px solid #555555;
-                padding: 5px;
-            }
-            QPushButton {
-                background-color: #FFDE98;
-                color: #000000;
-                padding: 5px 15px;
-                border: none;
-                border-radius: 3px;
-            }
-            QPushButton:hover {
-                background-color: #FFE9B8;
-            }
-            QTreeWidget {
-                background-color: #3E3E3E;
-                border: 1px solid #555555;
-            }
-            QTreeWidget::item:selected {
-                background-color: #FFDE98;
-                color: #000000;
-            }
-            QRadioButton {
-                spacing: 5px;
-            }
-            QRadioButton::indicator {
-                width: 8px;
-                height: 8px;
-            }
-            QRadioButton::indicator:unchecked {
-                background-color: #3E3E3E;
-                border: 2px solid #FFFFFF;
-                border-radius: 7px;
-            }
-            QRadioButton::indicator:checked {
-                background-color: #FFDE98;
-                border: 2px solid #FFFFFF;
-                border-radius: 7px;
-            }
-        """)
+        # self.apply_theme()
+        self.refresh_tree() 
+
+    # def apply_theme(self):
+    #     self.setStyleSheet("""
+    #         QWidget {
+    #             background-color: #2E2E2E;
+    #             color: #C8C8C8;
+    #             font-size: 12pt;
+    #         }
+    #         QLineEdit, QTextEdit {
+    #             background-color: #3E3E3E;
+    #             border: 1px solid #555555;
+    #             padding: 5px;
+    #         }
+    #         QPushButton {
+    #             background-color: #FFBE98;
+    #             color: #000000;
+    #             padding: 5px;
+    #             border: none;
+    #             border-radius: 4px;
+    #         }
+    #         QPushButton:hover {
+    #             background-color: #FFBE98;
+    #         }
+    #         QTreeWidget {
+    #             background-color: #3E3E3E;
+    #             border: 1px solid #555555;
+    #         }
+    #         QTreeWidget::item:selected {
+    #             background-color: #FFBE98;
+    #             color: #111111;
+    #         }
+    #         QRadioButton {
+    #             spacing: 5px;
+    #         }
+    #         QRadioButton::indicator {
+    #             width: 8px;
+    #             height: 8px;
+    #         }
+    #         QRadioButton::indicator:unchecked {
+    #             background-color: #3E3E3E;
+    #             border: 2px solid #C8C8C8;
+    #             border-radius: 7px;
+    #         }
+    #         QRadioButton::indicator:checked {
+    #             background-color: #FFBE98;
+    #             border: 2px solid #C8C8C8;
+    #             border-radius: 7px;
+    #         }
+    #         QSplitter::handle {
+    #             background-color: #555555;
+    #         }
+    #         QSplitter::handle:horizontal {
+    #             width: 2px;
+    #         }
+    #         QSplitter::handle:vertical {
+    #             height: 2px;
+    #         }
+    #         QSplitter::handle:hover {
+    #             background-color: #FFBE98;
+    #         }
+    #     """)
 
     def toggle_content_field(self):
         is_leaf_radio_checked = self.leaf_radio.isChecked()
@@ -502,20 +531,30 @@ class AlightGUI(QMainWindow):
             QMessageBox.warning(self, "Error", "No path specified for deletion.")
             return
 
-        try:
-            parent_path, name = path.rsplit('.', 1) if '.' in path else ('', path)
-            parent_node = self.get_node_from_path(parent_path)
-            parent_node.delete(name)
-            self.refresh_tree()
-            self.path_input.clear()
-            self.content_input.clear()
-            self.markdown_view.setMarkdownText("")
-            QMessageBox.information(self, "Success", "Entry deleted.")
-        except Exception as e:
-            QMessageBox.warning(self, "Error", f"Failed to delete entry: {str(e)}")
+        # Confirmation dialogue
+        reply = QMessageBox.question(self, 'Confirm Deletion',
+                                     f"Are you sure you want to delete '{path}'?",
+                                     QMessageBox.StandardButton.Yes | 
+                                     QMessageBox.StandardButton.No,
+                                     QMessageBox.StandardButton.No)
+
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                parent_path, name = path.rsplit('.', 1) if '.' in path else ('', path)
+                parent_node = self.get_node_from_path(parent_path)
+                parent_node.delete(name)
+                self.refresh_tree()
+                self.path_input.clear()
+                self.content_input.clear()
+                self.markdown_view.setMarkdownText("")
+                QMessageBox.information(self, "Success", "Entry deleted.")
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"Failed to delete entry: {str(e)}")
         
-        self.verify_tree_integrity()
-        self.cleanup_filesystem()
+            self.verify_tree_integrity()
+            self.cleanup_filesystem()
+        else:
+            QMessageBox.information(self, "Cancelled", "Deletion cancelled.")
 
     def setup_shortcuts(self):
         # Close window shortcut (Cmd+W on macOS, Ctrl+W on others)

@@ -173,12 +173,11 @@ class KnowledgeNode:
                 current = getattr(current, part)
             current.update_leaf(parts[-1], content)
         else:
-            file_path = os.path.join('src', 'lumineer', 'alight', 
-                                     self._path.replace('.', os.sep), 
-                                     f"{name}.py")
+            file_path = os.path.join(BASE_DIR, self._path.replace('.', os.sep), 
+                                    f"{name}.py")
             with open(file_path, 'w') as f:
                 f.write(f"content = '''{content}'''\n")
-            module_name = f"lumineer.alight.{self._path}.{name}"
+            module_name = f"alight.{self._path}.{name}"
             spec = importlib.util.spec_from_file_location(module_name, file_path)
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)

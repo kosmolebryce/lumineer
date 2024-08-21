@@ -37,7 +37,7 @@ class LumineerLauncher(QMainWindow):
         grabber.setAlignment(Qt.AlignmentFlag.AlignCenter)
         grabber.setStyleSheet("""
             background-color: #1E1E1E;
-            color: #FFDE98;
+            color: #FFBE98;
             font-size: 16px;
             padding: 2px;
         """)

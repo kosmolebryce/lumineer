@@ -171,7 +171,7 @@ class NMRAnalyzerApp(QMainWindow):
         self.setStyleSheet("""
             QWidget {
                 background-color: #353535;
-                color: #ffffff;
+                color: ##FFF5E6;
                 font-size: 12px;
             }
             QTextEdit, QLineEdit {
@@ -180,7 +180,7 @@ class NMRAnalyzerApp(QMainWindow):
                 padding: 5px;
             }
             QPushButton {
-                background-color: #FFDE98;
+                background-color: #FFBE98;
                 color: black;
                 padding: 5px 15px;
                 border: none;
@@ -202,8 +202,8 @@ class NMRAnalyzerApp(QMainWindow):
                 border-radius: 7px;
             }
             QRadioButton::indicator:checked {
-                border: 2px solid #FFDE98;
-                background: #FFDE98;
+                border: 2px solid #FFBE98;
+                background: #FFBE98;
                 border-radius: 7px;
             }
         """)

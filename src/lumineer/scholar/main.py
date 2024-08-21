@@ -228,7 +228,7 @@ class StyledInputDialog(QInputDialog):
         /* Input field styles */
         QLineEdit {
             color: #000000;  /* Black text for inputs */
-            background-color: #FFFFFF;  /* White background for inputs */
+            background-color: ##FFF5E6;  /* White background for inputs */
             margin: 1px;  /* Ensuring a bit of margin */
             padding: 2px;  /* Sufficient padding for text */
         }
@@ -244,7 +244,7 @@ class StyledInputDialog(QInputDialog):
         }
         /* Button styles for consistency */
         QPushButton {
-            color: #FFDE98;  /* Light gray text for buttons */
+            color: #FFBE98;  /* Light gray text for buttons */
             background-color: #444444;  /* Darker gray for buttons */
             border: 1px solid #333333;  /* Slight border for definition */
         }
@@ -303,7 +303,7 @@ class ManagyrApp(QMainWindow):
         }
         QPushButton {
             background-color: #000;
-            color: #FFDE98;
+            color: #FFBE98;
             border-radius: 4px;
             padding: 5px;
             min-width: 80px;
@@ -323,7 +323,7 @@ class ManagyrApp(QMainWindow):
         }
         QTabBar::tab:selected {
             background: #666;
-            color: #FFDE98; /* "Peach Fuzz" */
+            color: #FFBE98; /* "Peach Fuzz" */
         }
         QTableWidget {
             gridline-color: #666;
@@ -332,7 +332,7 @@ class ManagyrApp(QMainWindow):
             background-color: #555;
             padding: 4px;
             border: 1px solid #666;
-            color: #FFDE98; /* "Peach Fuzz" */
+            color: #FFBE98; /* "Peach Fuzz" */
             font-weight: bold;
         }
         QMessageBox, QInputDialog {
@@ -369,7 +369,7 @@ class ManagyrApp(QMainWindow):
         QComboBox, QAbstractItemView {
             color: #EEE; /* Black text for readability */
             background: #555; /* Dark background */
-            selection-background-color: #FFDE98; /* Peach Fuzz for selection */
+            selection-background-color: #FFBE98; /* Peach Fuzz for selection */
             selection-color: #000; /* Black text for selected item */
         }
         QComboBox::item {
@@ -378,11 +378,11 @@ class ManagyrApp(QMainWindow):
             height: 20px; /* Limit the height of items in the drop-down */
         }
         QComboBox::item:hover {
-            background-color: #FFDE98; /* Peach Fuzz for hovered item */
+            background-color: #FFBE98; /* Peach Fuzz for hovered item */
             color: #000; /* Black text for hovered item */
         }
         QComboBox::item:selected {
-            background-color: #FFDE98; /* Peach Fuzz for selected item */
+            background-color: #FFBE98; /* Peach Fuzz for selected item */
             color: #000; /* Black text for selected item */
         }
         QFrame[frameShape="4"],
