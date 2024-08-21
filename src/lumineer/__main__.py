@@ -139,7 +139,10 @@ class LumineerLauncher(QMainWindow):
                 return True
             
             if (modifiers & Qt.KeyboardModifier.ControlModifier or modifiers & Qt.KeyboardModifier.MetaModifier) and key == Qt.Key.Key_W:
-                if obj == self:
+                if hasattr(self, 'scholar_app') and self.scholar_app.isVisible():
+                    self.scholar_app.close()
+                    return True
+                elif obj == self:
                     return True
                     
         return super().eventFilter(obj, event)

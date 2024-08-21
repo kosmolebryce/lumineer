@@ -244,7 +244,7 @@ class StyledInputDialog(QInputDialog):
         }
         /* Button styles for consistency */
         QPushButton {
-            color: #FFBE98;  /* Light gray text for buttons */
+            color: #F8F8F8;  /* Light gray text for buttons */
             background-color: #444444;  /* Darker gray for buttons */
             border: 1px solid #333333;  /* Slight border for definition */
         }
@@ -276,7 +276,6 @@ class ManagyrApp(QMainWindow):
         self.setWindowTitle("Scholar - Lumineer")
         self.initUI()
         self.setup_shortcuts()
-        QApplication.instance().installEventFilter(self)
 
     def initUI(self):
         self.centralWidget = QWidget(self)
@@ -387,8 +386,8 @@ class ManagyrApp(QMainWindow):
         }
         QFrame[frameShape="4"],
         QFrame[frameShape="HLine"] {
-        color: rgba(255, 222, 152, 0.8);
-        background-color: rgba(255, 222, 152, 0.8);
+        color: #FFBE98;
+        background-color: #FFBE98;
         }
         """
         )
@@ -512,6 +511,19 @@ class ManagyrApp(QMainWindow):
         """)
         
         layout.addWidget(self.todoList)
+
+        # Add buttons for to-do operations
+        todo_button_layout = QHBoxLayout()
+        for button_text, slot in [
+            ("Add", self.add_todo),
+            ("Edit", self.edit_todo),
+            ("Delete", self.delete_todo)
+        ]:
+            button = QPushButton(button_text)
+            button.clicked.connect(slot)
+            todo_button_layout.addWidget(button)
+    
+        layout.addLayout(todo_button_layout)
         
         # Add stretch to push everything to the top
         layout.addStretch(1)
@@ -1334,20 +1346,12 @@ class ManagyrApp(QMainWindow):
                 self.gradebookList.addItem(item)
         
     def setup_shortcuts(self):
-        close_key = QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_W)  # This will be Command+W on macOS
-        self.closeWindowShortcut = QShortcut(close_key, self)
-        self.closeWindowShortcut.activated.connect(self.close)
+        close_shortcut = QShortcut(QKeySequence.StandardKey.Close, self)
+        close_shortcut.activated.connect(self.close)
 
-        # For compatibility, also keep the standard close shortcut
-        self.closeWindowShortcutStd = QShortcut(QKeySequence.StandardKey.Close, self)
-        self.closeWindowShortcutStd.activated.connect(self.close)
-    
-    def eventFilter(self, obj, event):
-        if event.type() == QEvent.Type.ShortcutOverride:
-            if (event.modifiers() & Qt.KeyboardModifier.ControlModifier or event.modifiers() & Qt.KeyboardModifier.MetaModifier) and event.key() == Qt.Key.Key_W:
-                event.accept()
-                return True
-        return super().eventFilter(obj, event)
+    def closeEvent(self, event):
+        # Perform any necessary cleanup
+        event.accept()
 
     def keyPressEvent(self, event):
         if event.matches(QKeySequence.StandardKey.Close) or (event.modifiers() & Qt.KeyboardModifier.ControlModifier and event.key() == Qt.Key.Key_W):
