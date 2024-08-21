@@ -9,9 +9,9 @@ packages = [{include = "lumineer", from = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-pyqt5 = "^5.15.11"
 appdirs = "^1.4.4"
 markdown = "^3.6"
+pyqt6 = "^6.7.1"
 
 [tool.poetry.group.dev.dependencies]
 poetry = "^1.8.3"

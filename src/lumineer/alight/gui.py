@@ -1,13 +1,14 @@
+# `src/lumineer/alight/gui.py`
 import sys
 import os
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QLabel, QLineEdit, QPushButton,
                              QTextEdit, QTreeWidget, QTreeWidgetItem,
-                             QMessageBox, QInputDialog, QShortcut, QRadioButton,
+                             QMessageBox, QInputDialog, QRadioButton,
                              QButtonGroup)
-from PyQt5.QtGui import QFont, QKeySequence, QKeyEvent
-from PyQt5.QtCore import Qt, QEvent, QObject
-from PyQt5.QtWidgets import QWIDGETSIZE_MAX
+from PyQt6.QtGui import QFont, QKeySequence, QKeyEvent, QShortcut
+from PyQt6.QtCore import Qt, QEvent, QObject
+from PyQt6.QtWidgets import QWIDGETSIZE_MAX
 
 from lumineer.alight.core import BASE_DIR, create_alight, KnowledgeNode
 import markdown
@@ -28,21 +29,21 @@ class AlightGUI(QMainWindow):
         self.alight = create_alight()
         self.init_ui()
         self.setup_shortcuts()
-        self.setFocusPolicy(Qt.StrongFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.activateWindow()
 
     def is_leaf_selected(self):
         selected_items = self.tree.selectedItems()
         if selected_items:
             item = selected_items[0]
-            return item.data(0, Qt.UserRole) is not None
+            return item.data(0, Qt.ItemDataRole.UserRole) is not None
         return False
 
     def set_initial_content_state(self):
         selected_items = self.tree.selectedItems()
         if selected_items:
             item = selected_items[0]
-            content = item.data(0, Qt.UserRole)
+            content = item.data(0, Qt.ItemDataRole.UserRole)
             if content is not None:
                 # Leaf is selected
                 self.content_input.setMaximumHeight(100)
@@ -71,6 +72,7 @@ class AlightGUI(QMainWindow):
         self.tree = QTreeWidget()
         self.tree.setHeaderLabel("Knowledge Structure")
         self.tree.itemClicked.connect(self.on_item_clicked)
+        self.tree.currentItemChanged.connect(self.on_selection_changed)  # Add this line
         main_layout.addWidget(self.tree, 1)
 
         # Right side: CRUD operations
@@ -156,8 +158,8 @@ class AlightGUI(QMainWindow):
                 spacing: 5px;
             }
             QRadioButton::indicator {
-                width: 10px;
-                height: 10px;
+                width: 8px;
+                height: 8px;
             }
             QRadioButton::indicator:unchecked {
                 background-color: #3E3E3E;
@@ -202,10 +204,13 @@ class AlightGUI(QMainWindow):
         self.tree.clear()
         root_item = QTreeWidgetItem(self.tree, ["alight"])
         self.add_node_to_tree(self.alight, root_item)
-        self.tree.expandAll()
+        # self.tree.expandAll()
         if selected_path:
             self.select_item_by_path(selected_path)
-        self.set_initial_content_state()
+        else:
+            # Select the root item if no previous selection
+            self.tree.setCurrentItem(root_item)
+        self.on_selection_changed()  # Add this line to update content for the initial selection
 
     def add_node_to_tree(self, node, parent):
         items = node.read().items()
@@ -218,7 +223,7 @@ class AlightGUI(QMainWindow):
                 child_node = getattr(node, name)
                 self.add_node_to_tree(child_node, item)
             else:
-                item.setData(0, Qt.UserRole, value)
+                item.setData(0, Qt.ItemDataRole.UserRole, value)
 
     def get_item_path(self, item):
         path = []
@@ -228,9 +233,12 @@ class AlightGUI(QMainWindow):
         return '.'.join(path[1:])  # Exclude 'alight' from the path
 
     def on_item_clicked(self, item, column):
+        if item is None:
+            return
+
         path = self.get_item_path(item)
         self.path_input.setText(path)
-        content = item.data(0, Qt.UserRole)
+        content = item.data(0, Qt.ItemDataRole.UserRole)
         
         if content is not None:
             # This is a leaf
@@ -249,6 +257,11 @@ class AlightGUI(QMainWindow):
                 self.content_input.setPlainText("(This node is empty)")
         
         self.toggle_content_field()
+
+    def on_selection_changed(self):
+        selected_item = self.tree.currentItem()
+        if selected_item:
+            self.on_item_clicked(selected_item, 0)
 
     def get_node_from_path(self, path):
         node = self.alight
@@ -270,7 +283,11 @@ class AlightGUI(QMainWindow):
             
             name = parts[-1]
             if is_leaf:
-                current.create_leaf(name, content)
+                # Ensure we're creating a leaf (module), not a package
+                if not hasattr(current, name):
+                    current.create_leaf(name, content)
+                else:
+                    raise ValueError(f"A node or leaf named '{name}' already exists.")
             else:
                 current.create_node(name)
             
@@ -343,24 +360,24 @@ class AlightGUI(QMainWindow):
 
     def setup_shortcuts(self):
         # Close window shortcut (Cmd+W on macOS, Ctrl+W on others)
-        close_window_shortcut = QShortcut(QKeySequence.Close, self)
+        close_window_shortcut = QShortcut(QKeySequence.StandardKey.Close, self)
         close_window_shortcut.activated.connect(self.close)
 
     def keyPressEvent(self, event):
-        if event.matches(QKeySequence.Quit):
+        if event.matches(QKeySequence.StandardKey.Quit):
             QApplication.instance().quit()
-        elif event.matches(QKeySequence.Close):
+        elif event.matches(QKeySequence.StandardKey.Close):
             self.close()
         else:
             super().keyPressEvent(event)
 
 class ApplicationEventFilter(QObject):
     def eventFilter(self, obj, event):
-        if event.type() == QEvent.KeyPress:
-            if event.matches(QKeySequence.Quit):
+        if event.type() == QEvent.Type.KeyPress:
+            if event.matches(QKeySequence.StandardKey.Quit):
                 QApplication.instance().quit()
                 return True
-            elif event.matches(QKeySequence.Close) and isinstance(QApplication.activeWindow(), AlightGUI):
+            elif event.matches(QKeySequence.StandardKey.Close) and isinstance(QApplication.activeWindow(), AlightGUI):
                 QApplication.activeWindow().close()
                 return True
         return super().eventFilter(obj, event)
@@ -375,7 +392,7 @@ def run():
     ex = AlightGUI()
     ex.show()
     
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 def main():
     run()

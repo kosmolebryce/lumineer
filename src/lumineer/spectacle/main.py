@@ -1,11 +1,11 @@
 # `src/lumineer/spectacle/main.py`
 import sys
 import re
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QLabel, QTextEdit, QRadioButton,
-                             QPushButton, QButtonGroup, QShortcut)
-from PyQt5.QtGui import QPalette, QColor, QFont, QKeySequence
-from PyQt5.QtCore import Qt, QEvent
+                             QPushButton, QButtonGroup)
+from PyQt6.QtGui import QPalette, QColor, QFont, QKeySequence, QShortcut
+from PyQt6.QtCore import Qt, QEvent
 
 class NMRAnalysisHelper:
     def __init__(self):
@@ -238,18 +238,18 @@ class NMRAnalyzerApp(QMainWindow):
         self.closeWindowShortcut.activated.connect(self.close)
 
         # For compatibility, also keep the standard close shortcut
-        self.closeWindowShortcutStd = QShortcut(QKeySequence.Close, self)
+        self.closeWindowShortcutStd = QShortcut(QKeySequence.StandardKey.Close, self)
         self.closeWindowShortcutStd.activated.connect(self.close)
     
     def eventFilter(self, obj, event):
-        if event.type() == QEvent.ShortcutOverride:
+        if event.type() == QEvent.Type.ShortcutOverride:
             if (event.modifiers() & Qt.ControlModifier or event.modifiers() & Qt.MetaModifier) and event.key() == Qt.Key_W:
                 event.accept()
                 return True
         return super().eventFilter(obj, event)
 
     def keyPressEvent(self, event):
-        if event.matches(QKeySequence.Close) or (event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_W):
+        if event.matches(QKeySequence.StandardKey.Close) or (event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_W):
             self.close()
             event.accept()
         else:
@@ -259,7 +259,7 @@ def main():
     app = QApplication(sys.argv)
     ex = NMRAnalyzerApp()
     ex.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 if __name__ == '__main__':
     main()

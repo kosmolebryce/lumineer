@@ -1,3 +1,4 @@
+# `src/lumineer/alight/core.py`
 import os
 import importlib
 import importlib.util
@@ -78,10 +79,18 @@ class KnowledgeNode:
                 current = getattr(current, part)
             current.create_leaf(parts[-1], content)
         else:
-            file_path = os.path.join(BASE_DIR, self._path.replace('.', os.sep), 
-                                     f"{name}.py")
+            # Ensure that we're creating a leaf (module), not a package
+            file_path = os.path.join(BASE_DIR, self._path.replace('.', os.sep), f"{name}.py")
+            
+            # Check if the file already exists to prevent overwriting
+            if os.path.exists(file_path):
+                raise ValueError(f"A leaf (module) named '{name}' already exists.")
+            
+            # Write content to the new leaf (module)
             with open(file_path, 'w') as f:
                 f.write(f"content = '''{content}'''\n")
+            
+            # Import the newly created module
             module_name = f"alight.{self._path}.{name}" if self._path else f"alight.{name}"
             importlib.invalidate_caches()
             module = importlib.import_module(module_name)

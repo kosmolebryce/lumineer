@@ -6,13 +6,13 @@ import json
 import markdown
 from appdirs import user_data_dir, user_config_dir
 from pathlib import Path
-from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout,
+from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout,
                              QComboBox, QTextEdit, QPushButton, QFileDialog,
                              QInputDialog, QMessageBox, QMainWindow, QDialog,
-                             QLabel, QDialogButtonBox, QShortcut, QRadioButton,
+                             QLabel, QDialogButtonBox, QRadioButton,
                              QButtonGroup)
-from PyQt5.QtCore import Qt, QEvent
-from PyQt5.QtGui import QKeyEvent, QKeySequence, QFont
+from PyQt6.QtCore import Qt, QEvent
+from PyQt6.QtGui import QKeyEvent, QKeySequence, QFont, QShortcut
 
 APP_NAME = "Lumineer"
 APP_AUTHOR = "kosmolebryce"
@@ -286,7 +286,7 @@ class FlashcardApp(QMainWindow):
             return
             
         dialog = CardDialog(parent=self)
-        if dialog.exec_():
+        if dialog.exec():
             front, back = dialog.get_card_content()
             if front and back:
                 new_card = {"front": front, "back": back}
@@ -304,7 +304,7 @@ class FlashcardApp(QMainWindow):
             return
 
         dialog = DeleteDialog(self)
-        if dialog.exec_():
+        if dialog.exec():
             choice = dialog.get_delete_choice()
             if choice == "card":
                 self.delete_current_card()
@@ -343,7 +343,7 @@ class FlashcardApp(QMainWindow):
         self.closeWindowShortcut.activated.connect(self.close)
 
         # For compatibility, also keep the standard close shortcut
-        self.closeWindowShortcutStd = QShortcut(QKeySequence.Close, self)
+        self.closeWindowShortcutStd = QShortcut(QKeySequence.StandardKey.Close, self)
         self.closeWindowShortcutStd.activated.connect(self.close)
 
         # Existing shortcuts
@@ -400,7 +400,7 @@ class FlashcardApp(QMainWindow):
 
         current_card = self.current_deck[self.current_card_index]
         dialog = CardDialog(front=current_card['front'], back=current_card['back'], parent=self)
-        if dialog.exec_():
+        if dialog.exec():
             front, back = dialog.get_card_content()
             if front and back:
                 self.current_deck[self.current_card_index] = {"front": front, "back": back}
@@ -410,14 +410,14 @@ class FlashcardApp(QMainWindow):
                 QMessageBox.warning(self, 'Invalid Card', 'Both front and back of the card must have content.')
 
     def eventFilter(self, obj, event):
-        if event.type() == QEvent.ShortcutOverride:
+        if event.type() == QEvent.Type.ShortcutOverride:
             if (event.modifiers() & Qt.ControlModifier or event.modifiers() & Qt.MetaModifier) and event.key() == Qt.Key_W:
                 event.accept()
                 return True
         return super().eventFilter(obj, event)
 
     def keyPressEvent(self, event):
-        if event.matches(QKeySequence.Close) or (event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_W):
+        if event.matches(QKeySequence.StandardKey.Close) or (event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_W):
             self.close()
             event.accept()
         else:
@@ -427,7 +427,7 @@ def main():
     app = QApplication(sys.argv)
     ex = FlashcardApp()
     ex.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 if __name__ == '__main__':
     main()

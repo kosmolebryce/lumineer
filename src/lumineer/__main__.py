@@ -1,9 +1,9 @@
 # `src/lumineer/__main__.py`
 import sys
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, 
-                             QPushButton, QDesktopWidget, QVBoxLayout, QLabel)
-from PyQt5.QtCore import Qt, QSize, QEvent, QPoint
-from PyQt5.QtGui import QFont, QKeySequence, QMouseEvent
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, 
+                             QPushButton, QVBoxLayout, QLabel)
+from PyQt6.QtCore import Qt, QSize, QEvent, QPoint
+from PyQt6.QtGui import QFont, QKeySequence, QMouseEvent, QScreen
 from appdirs import user_data_dir
 from pathlib import Path
 
@@ -19,10 +19,11 @@ class LumineerLauncher(QMainWindow):
         self.initUI()
         QApplication.instance().installEventFilter(self)
         self.oldPos = self.pos()
+        self.applicationSupportsSecureRestorableState()
 
     def initUI(self):
         self.setWindowTitle('Lumineer')
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
         
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -33,7 +34,7 @@ class LumineerLauncher(QMainWindow):
 
         # Add grabber
         grabber = QLabel("≡")
-        grabber.setAlignment(Qt.AlignCenter)
+        grabber.setAlignment(Qt.AlignmentFlag.AlignCenter)
         grabber.setStyleSheet("""
             background-color: #1E1E1E;
             color: #FFDE98;
@@ -119,8 +120,8 @@ class LumineerLauncher(QMainWindow):
         self.alight_app.show()
 
     def position_window(self):
-        screen = QDesktopWidget().screenNumber(QDesktopWidget().cursor().pos())
-        screen_size = QDesktopWidget().screenGeometry(screen)
+        screen = QApplication.primaryScreen()
+        screen_size = screen.geometry()
         size = self.geometry()
         
         x = screen_size.width() - size.width() - 10
@@ -129,35 +130,39 @@ class LumineerLauncher(QMainWindow):
         self.move(x, y)
 
     def eventFilter(self, obj, event):
-        if event.type() == QEvent.KeyPress:
+        if event.type() == QEvent.Type.KeyPress:
             key = event.key()
             modifiers = event.modifiers()
             
-            # Handle Cmd+Q (macOS) or Ctrl+Q (other platforms)
-            if (modifiers & Qt.ControlModifier or modifiers & Qt.MetaModifier) and key == Qt.Key_Q:
+            if (modifiers & Qt.KeyboardModifier.ControlModifier or modifiers & Qt.KeyboardModifier.MetaModifier) and key == Qt.Key.Key_Q:
                 self.close()
-                return True  # Event handled
+                return True
             
-            if (modifiers & Qt.ControlModifier or modifiers & Qt.MetaModifier) and key == Qt.Key_W:
-                # If the event is for the main launcher window, ignore it
+            if (modifiers & Qt.KeyboardModifier.ControlModifier or modifiers & Qt.KeyboardModifier.MetaModifier) and key == Qt.Key.Key_W:
                 if obj == self:
-                    return True  # Event handled, don't propagate
+                    return True
                     
-        # For all other events, or if the event is not for this window, 
-        # pass it on for default processing
         return super().eventFilter(obj, event)
 
-    def keyPressEvent(self, event):
-        # This method will catch key events for the main window
-        if event.matches(QKeySequence.Quit):
-            self.closeEvent()
-            event.accept()
-        else:
-            super().keyPressEvent(event)
-
     def closeEvent(self, event):
-        # Gracefully close the application
+        # List of possible sub-applications
+        sub_apps = ['flash_app', 'scholar_app', 'spectacle_app', 'alight_app']
+        
+        # Perform cleanup operations
+        for app_name in sub_apps:
+            if hasattr(self, app_name):
+                app = getattr(self, app_name)
+                if hasattr(app, 'isVisible') and app.isVisible():
+                    app.close()
+        
+        # Accept the close event
+        event.accept()
+        
+        # Ensure the application quits
         QApplication.instance().quit()
+
+    def applicationSupportsSecureRestorableState(self):
+        return True
 
     def mousePressEvent(self, event: QMouseEvent):
         self.oldPos = event.globalPos()
@@ -179,7 +184,7 @@ def main():
     app = QApplication(sys.argv)
     launcher = LumineerLauncher()
     launcher.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 if __name__ == '__main__':
     main()

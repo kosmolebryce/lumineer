@@ -4,7 +4,7 @@ import sys
 import json
 import os
 from pathlib import Path
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QApplication,
     QFrame,
     QMainWindow,
@@ -28,11 +28,10 @@ from PyQt5.QtWidgets import (
     QInputDialog,
     QDialog,
     QDialogButtonBox,
-    QSizePolicy,
-    QShortcut
+    QSizePolicy
 )
-from PyQt5.QtCore import Qt, QCoreApplication, QEvent
-from PyQt5.QtGui import QBrush, QColor, QPalette, QKeySequence
+from PyQt6.QtCore import Qt, QCoreApplication, QEvent
+from PyQt6.QtGui import QBrush, QColor, QPalette, QKeySequence, QShortcut
 
 # Constants
 APP_NAME = "Lumineer"
@@ -265,7 +264,7 @@ class StyledInputDialog(QInputDialog):
         dialog.setDoubleValue(value)
         dialog.setDoubleRange(min, max)
         dialog.setDoubleDecimals(decimals)
-        result = dialog.exec_()
+        result = dialog.exec()
         return (dialog.doubleValue(), result == QDialog.Accepted)
 
 
@@ -736,7 +735,7 @@ class ManagyrApp(QMainWindow):
     def populate_fields_from_selection(self, current, previous):
         if not current:
             return
-        info = json.loads(current.data(Qt.UserRole))
+        info = json.loads(current.data(Qt.ItemDataRole.UserRole))
         self.courseCodeEntry.setText(info["course_code"])
         self.sectionEntry.setText(info["section"])
         self.courseTitleEntry.setText(info["course_title"])
@@ -875,7 +874,7 @@ class ManagyrApp(QMainWindow):
             return
 
         # Get the current class info from the list
-        cls_info = json.loads(current_item.data(Qt.UserRole))
+        cls_info = json.loads(current_item.data(Qt.ItemDataRole.UserRole))
 
         # Check for changes in the unique identifier (course_code, section, semester)
         original_course_code = cls_info["course_code"]
@@ -937,7 +936,7 @@ class ManagyrApp(QMainWindow):
             QMessageBox.critical(self, "Error", "No class selected.")
             return
 
-        cls_info = json.loads(current_item.data(Qt.UserRole))
+        cls_info = json.loads(current_item.data(Qt.ItemDataRole.UserRole))
         course_code = cls_info.get("course_code")
         section = cls_info.get("section")
         semester = cls_info.get("semester")
@@ -965,7 +964,7 @@ class ManagyrApp(QMainWindow):
             item = QListWidgetItem(
                 f"{cls['course_code']} - {cls['section']} - {cls['course_title']}"
             )
-            item.setData(Qt.UserRole, json.dumps(cls))
+            item.setData(Qt.ItemDataRole.UserRole, json.dumps(cls))
             self.scheduleList.addItem(item)
 
     # Method to sort semesters
@@ -1039,7 +1038,7 @@ class ManagyrApp(QMainWindow):
                 item = QListWidgetItem(
                     f"{cls['course_code']} - {cls['section']} - {cls['course_title']}"
                 )
-                item.setData(Qt.UserRole, json.dumps(cls))
+                item.setData(Qt.ItemDataRole.UserRole, json.dumps(cls))
                 self.scheduleList.addItem(item)
 
         # Update the summary section
@@ -1049,7 +1048,7 @@ class ManagyrApp(QMainWindow):
         self.gradebookList.clear()
         for cls in self.manager.get_schedule():
             item = QListWidgetItem(cls["course_title"])
-            item.setData(Qt.UserRole, json.dumps(cls))
+            item.setData(Qt.ItemDataRole.UserRole, json.dumps(cls))
             self.gradebookList.addItem(item)
 
     def exit_program(self):
@@ -1058,7 +1057,7 @@ class ManagyrApp(QMainWindow):
     def populate_gradebook_from_selection(self, current, previous):
         if not current:
             return
-        course_info = json.loads(current.data(Qt.UserRole))
+        course_info = json.loads(current.data(Qt.ItemDataRole.UserRole))
         course_title = course_info["course_title"]
         semester = course_info["semester"]
         gradebook = self.manager.get_gradebook(course_title, semester)
@@ -1097,7 +1096,7 @@ class ManagyrApp(QMainWindow):
         if column in [0, 1, 2] and row < self.assignmentsTable.rowCount() - 1:  # Exclude overall grade row
             current_item = self.gradebookList.currentItem()
             if current_item:
-                course_info = json.loads(current_item.data(Qt.UserRole))
+                course_info = json.loads(current_item.data(Qt.ItemDataRole.UserRole))
                 course_title = course_info["course_title"]
                 semester = course_info["semester"]
                 gradebook = self.manager.get_gradebook(course_title, semester)
@@ -1330,7 +1329,7 @@ class ManagyrApp(QMainWindow):
             if cls["semester"] == selected_semester:
                 # Use a tuple of (course_title, semester) as a unique identifier
                 item = QListWidgetItem(f"{cls['course_title']} ({cls['semester']})")
-                item.setData(Qt.UserRole, json.dumps(cls))
+                item.setData(Qt.ItemDataRole.UserRole, json.dumps(cls))
                 self.gradebookList.addItem(item)
         
     def setup_shortcuts(self):
@@ -1339,18 +1338,18 @@ class ManagyrApp(QMainWindow):
         self.closeWindowShortcut.activated.connect(self.close)
 
         # For compatibility, also keep the standard close shortcut
-        self.closeWindowShortcutStd = QShortcut(QKeySequence.Close, self)
+        self.closeWindowShortcutStd = QShortcut(QKeySequence.StandardKey.Close, self)
         self.closeWindowShortcutStd.activated.connect(self.close)
     
     def eventFilter(self, obj, event):
-        if event.type() == QEvent.ShortcutOverride:
+        if event.type() == QEvent.Type.ShortcutOverride:
             if (event.modifiers() & Qt.ControlModifier or event.modifiers() & Qt.MetaModifier) and event.key() == Qt.Key_W:
                 event.accept()
                 return True
         return super().eventFilter(obj, event)
 
     def keyPressEvent(self, event):
-        if event.matches(QKeySequence.Close) or (event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_W):
+        if event.matches(QKeySequence.StandardKey.Close) or (event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_W):
             self.close()
             event.accept()
         else:
@@ -1367,7 +1366,7 @@ def main():
     manager = Managyr()
     managyr_app = ManagyrApp(manager)
     managyr_app.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":
