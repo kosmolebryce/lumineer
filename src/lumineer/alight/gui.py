@@ -8,7 +8,8 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt5.QtGui import QFont, QKeySequence, QKeyEvent
 from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtWidgets import QWIDGETSIZE_MAX
-from lumineer.alight.core import create_alight, KnowledgeNode
+
+from lumineer.alight.core import BASE_DIR, create_alight, KnowledgeNode
 import markdown
 
 class MarkdownTextEdit(QTextEdit):
@@ -23,9 +24,38 @@ class MarkdownTextEdit(QTextEdit):
 class AlightGUI(QMainWindow):
     def __init__(self):
         super().__init__()
+        os.makedirs(BASE_DIR, exist_ok=True)
         self.alight = create_alight()
         self.init_ui()
         self.setup_shortcuts()
+
+    def is_leaf_selected(self):
+        selected_items = self.tree.selectedItems()
+        if selected_items:
+            item = selected_items[0]
+            return item.data(0, Qt.UserRole) is not None
+        return False
+
+    def set_initial_content_state(self):
+        selected_items = self.tree.selectedItems()
+        if selected_items:
+            item = selected_items[0]
+            content = item.data(0, Qt.UserRole)
+            if content is not None:
+                # Leaf is selected
+                self.content_input.setMaximumHeight(100)
+                self.content_input.setEnabled(True)
+                self.markdown_view.setVisible(True)
+            else:
+                # Node is selected
+                self.content_input.setMaximumHeight(QWIDGETSIZE_MAX)
+                self.content_input.setEnabled(False)
+                self.markdown_view.setVisible(False)
+        else:
+            # No item selected, assume node view
+            self.content_input.setMaximumHeight(QWIDGETSIZE_MAX)
+            self.content_input.setEnabled(False)
+            self.markdown_view.setVisible(False)
 
     def init_ui(self):
         self.setWindowTitle("Lumineer - Alight")
@@ -64,7 +94,7 @@ class AlightGUI(QMainWindow):
         selection_layout.addWidget(self.leaf_radio)
         right_layout.addLayout(selection_layout)
 
-        # Connect radio buttons to enable/disable content field
+        # Connect radio buttons to toggle_content_field
         self.node_radio.toggled.connect(self.toggle_content_field)
         self.leaf_radio.toggled.connect(self.toggle_content_field)
 
@@ -124,8 +154,8 @@ class AlightGUI(QMainWindow):
                 spacing: 5px;
             }
             QRadioButton::indicator {
-                width: 13px;
-                height: 13px;
+                width: 10px;
+                height: 10px;
             }
             QRadioButton::indicator:unchecked {
                 background-color: #3E3E3E;
@@ -140,15 +170,40 @@ class AlightGUI(QMainWindow):
         """)
 
     def toggle_content_field(self):
-        is_leaf = self.leaf_radio.isChecked()
-        self.content_input.setEnabled(is_leaf)
-        self.markdown_view.setVisible(is_leaf)
+        is_leaf_radio_checked = self.leaf_radio.isChecked()
+        is_actual_leaf_selected = self.is_leaf_selected()
+        
+        self.content_input.setEnabled(True)
+        self.content_input.setMaximumHeight(100 if (is_leaf_radio_checked and is_actual_leaf_selected) else QWIDGETSIZE_MAX)
+        self.markdown_view.setVisible(is_leaf_radio_checked and is_actual_leaf_selected)
+        
+        if is_leaf_radio_checked:
+            if not is_actual_leaf_selected:
+                self.content_input.setPlainText("")
+        else:
+            selected_items = self.tree.selectedItems()
+            if selected_items:
+                item = selected_items[0]
+                path = self.get_item_path(item)
+                node = self.get_node_from_path(path)
+                children = node.read()
+                if children:
+                    node_content = "\n".join(f"- {key}" for key in children.keys())
+                    self.content_input.setPlainText(f"Node contents:\n{node_content}")
+                else:
+                    self.content_input.setPlainText("(This node is empty)")
+            else:
+                self.content_input.setPlainText("(This is a node. Select it in the tree to view its contents.)")
 
     def refresh_tree(self):
+        selected_path = self.get_item_path(self.tree.currentItem()) if self.tree.currentItem() else None
         self.tree.clear()
         root_item = QTreeWidgetItem(self.tree, ["alight"])
         self.add_node_to_tree(self.alight, root_item)
         self.tree.expandAll()
+        if selected_path:
+            self.select_item_by_path(selected_path)
+        self.set_initial_content_state()
 
     def add_node_to_tree(self, node, parent):
         items = node.read().items()
@@ -177,23 +232,19 @@ class AlightGUI(QMainWindow):
         
         if content is not None:
             # This is a leaf
-            self.content_input.setMaximumHeight(100)
+            self.leaf_radio.setChecked(True)
             self.content_input.setPlainText(content)
             self.markdown_view.setMarkdownText(content)
-            self.leaf_radio.setChecked(True)
         else:
             # This is a node
-            self.content_input.setMaximumHeight(QWIDGETSIZE_MAX)
+            self.node_radio.setChecked(True)
             node = self.get_node_from_path(path)
             children = node.read()
             if children:
                 node_content = "\n".join(f"- {key}" for key in children.keys())
                 self.content_input.setPlainText(f"Node contents:\n{node_content}")
-                self.markdown_view.setMarkdownText(f"Node contents:\n{node_content}")
             else:
                 self.content_input.setPlainText("(This node is empty)")
-                self.markdown_view.setMarkdownText("(This node is empty)")
-            self.node_radio.setChecked(True)
         
         self.toggle_content_field()
 
@@ -223,6 +274,7 @@ class AlightGUI(QMainWindow):
             
             self.refresh_tree()
             self.select_item_by_path(path)
+            self.toggle_content_field()
             QMessageBox.information(self, "Success", 
                                     f"{'Leaf' if is_leaf else 'Node'} created.")
         except Exception as e:
@@ -259,10 +311,11 @@ class AlightGUI(QMainWindow):
             parent_node = self.get_node_from_path(parent_path)
             if is_leaf:
                 parent_node.update_leaf(name, content)
-                self.markdown_view.setMarkdownText(content)
             else:
                 parent_node.update_node(name)
             self.refresh_tree()
+            self.select_item_by_path(path)
+            self.toggle_content_field()
             QMessageBox.information(self, "Success", 
                                     f"{'Leaf' if is_leaf else 'Node'} updated.")
         except Exception as e:
@@ -281,6 +334,7 @@ class AlightGUI(QMainWindow):
             self.refresh_tree()
             self.path_input.clear()
             self.content_input.clear()
+            self.markdown_view.setMarkdownText("")
             QMessageBox.information(self, "Success", "Entry deleted.")
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to delete entry: {str(e)}")
