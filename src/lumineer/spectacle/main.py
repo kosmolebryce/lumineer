@@ -171,7 +171,7 @@ class NMRAnalyzerApp(QMainWindow):
         self.setStyleSheet("""
             QWidget {
                 background-color: #353535;
-                color: ##FFF5E6;
+                color: #FFF5E6;
                 font-size: 12px;
             }
             QTextEdit, QLineEdit {
