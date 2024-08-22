@@ -6,12 +6,15 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QLabel, QLineEdit, QPushButton,
                              QTextEdit, QTreeWidget, QTreeWidgetItem,
                              QMessageBox, QInputDialog, QRadioButton,
-                             QButtonGroup, QSplitter, QTextBrowser)
+                             QButtonGroup, QSplitter, QTextBrowser,
+                             QDialog)
 from PyQt6.QtGui import QDesktopServices, QFont, QKeySequence, QKeyEvent, QShortcut
 from PyQt6.QtCore import Qt, QEvent, QObject, QUrl, pyqtSignal
 from PyQt6.QtWidgets import QWIDGETSIZE_MAX
 
-from lumineer.alight.core import BASE_DIR, create_alight, KnowledgeNode
+from .constants import BASE_DIR
+from .core import create_alight, KnowledgeNode, PlaceholderNode
+
 import markdown
 
 logging.basicConfig(filename='alight_debug.log', level=logging.DEBUG, 
@@ -35,6 +38,40 @@ class MarkdownTextEdit(QTextBrowser):
         self.linkClicked.emit(url_string)
         QDesktopServices.openUrl(QUrl(url_string))
 
+class CreateNodeLeafDialog(QDialog):
+    def __init__(self, path, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Create New Item")
+        self.path = path
+        self.result = None
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel(f"Choose the type for '{path}':"))
+
+        self.node_radio = QRadioButton("Node")
+        self.leaf_radio = QRadioButton("Leaf")
+        self.leaf_radio.setChecked(True)
+
+        button_group = QButtonGroup(self)
+        button_group.addButton(self.node_radio)
+        button_group.addButton(self.leaf_radio)
+
+        layout.addWidget(self.node_radio)
+        layout.addWidget(self.leaf_radio)
+
+        create_button = QPushButton("Create")
+        create_button.clicked.connect(self.accept)
+        cancel_button = QPushButton("Cancel")
+        cancel_button.clicked.connect(self.reject)
+
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(create_button)
+        button_layout.addWidget(cancel_button)
+        layout.addLayout(button_layout)
+
+    def get_result(self):
+        return "Leaf" if self.leaf_radio.isChecked() else "Node"
+
 class AlightGUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -42,6 +79,7 @@ class AlightGUI(QMainWindow):
         self.alight = create_alight()
         self.init_ui()
         self.setup_shortcuts()
+        self.setup_address_bar()
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.activateWindow()
         self.cleanup_filesystem()
@@ -159,7 +197,47 @@ class AlightGUI(QMainWindow):
         self.content_splitter.setSizes([70, 750])
 
         # self.apply_theme()
-        self.refresh_tree() 
+        self.refresh_tree()
+    
+    def setup_address_bar(self):
+        self.path_input.returnPressed.connect(self.navigate_to_path)
+
+    def navigate_to_path(self):
+        path = self.path_input.text()
+        if not path.startswith('alight'):
+            path = 'alight.' + path
+
+        try:
+            node = self.get_node_from_path(path)
+            if isinstance(node, PlaceholderNode):
+                # This is a non-existent path
+                self.create_node_or_leaf(path)
+            elif node is None:
+                # This is an existing leaf
+                self.select_item_by_path(path)
+            else:
+                # This is an existing node
+                self.select_item_by_path(path)
+        except Exception as e:
+            logging.error(f"Navigation failed: {str(e)}")
+            QMessageBox.warning(self, "Error", f"Navigation failed: {str(e)}")
+        
+        # Always keep the entered path
+        self.path_input.setText(path)
+
+    def create_node_or_leaf(self, path):
+        dialog = CreateNodeLeafDialog(path, self)
+        result = dialog.exec()
+
+        if result == QDialog.DialogCode.Accepted:
+            choice = dialog.get_result()
+            is_leaf = (choice == "Leaf")
+            self.leaf_radio.setChecked(is_leaf)
+            self.node_radio.setChecked(not is_leaf)
+            self.create_entry()
+        else:
+            # If user cancels, keep the entered path
+            self.path_input.setText(path)
 
     # def apply_theme(self):
     #     self.setStyleSheet("""
@@ -278,7 +356,11 @@ class AlightGUI(QMainWindow):
         # Clear and rebuild the tree
         self.tree.clear()
         root_item = QTreeWidgetItem(self.tree, ["alight"])
-        self.add_node_to_tree(self.alight, root_item)
+        try:
+            self.add_node_to_tree(self.alight, root_item)
+        except AttributeError as e:
+            logging.error(f"Error refreshing tree: {str(e)}")
+            QMessageBox.warning(self, "Error", f"Failed to refresh tree: {str(e)}")
 
         # Restore the expansion state
         for i, state in enumerate(expansion_state):
@@ -301,9 +383,14 @@ class AlightGUI(QMainWindow):
         for name, value in sorted_items:
             item = QTreeWidgetItem(parent, [name])
             if isinstance(value, str) and value.startswith("KnowledgeNode"):
-                child_node = getattr(node, name)
-                self.add_node_to_tree(child_node, item)
+                logging.debug(f"Adding node: {name}")
+                try:
+                    child_node = getattr(node, name)
+                    self.add_node_to_tree(child_node, item)
+                except AttributeError as e:
+                    logging.error(f"Error adding node {name}: {str(e)}")
             else:
+                logging.debug(f"Adding leaf: {name}")
                 item.setData(0, Qt.ItemDataRole.UserRole, value)
 
     def get_item_path(self, item):
@@ -328,7 +415,6 @@ class AlightGUI(QMainWindow):
         file_path = full_path + '.py'
         dir_path = full_path
 
-        
         file_exists = os.path.exists(file_path)
         dir_exists = os.path.isdir(dir_path)
         
@@ -413,54 +499,22 @@ class AlightGUI(QMainWindow):
             current = self.alight
             for part in parts[:-1]:
                 logging.debug(f"Traversing to {current._path}.{part}")
+                if isinstance(getattr(current, part), PlaceholderNode):
+                    # Create intermediate nodes if they don't exist
+                    current.create_node(part)
                 current = getattr(current, part)
             
             name = parts[-1]
-            full_path = os.path.join(BASE_DIR, '.'.join(parts).replace('.', os.sep))
-            
-            # Check the state of neighboring entries
-            parent_dir = os.path.dirname(full_path)
-            logging.debug(f"Checking contents of parent directory: {parent_dir}")
-            for item in os.listdir(parent_dir):
-                item_path = os.path.join(parent_dir, item)
-                if os.path.isfile(item_path) and item.endswith('.py'):
-                    logging.debug(f"Found leaf file: {item}")
-                elif os.path.isdir(item_path):
-                    logging.debug(f"Found node directory: {item}")
-            
-            file_exists = os.path.exists(full_path + '.py')
-            dir_exists = os.path.isdir(full_path)
-            
-            logging.debug(f"File exists: {file_exists}, Directory exists: {dir_exists}")
-            
-            if file_exists and dir_exists:
-                logging.error(f"Both file and directory exist for {path}")
-                raise ValueError(f"Inconsistent state: both leaf and node exist for '{name}'")
-            elif file_exists:
-                if is_leaf:
-                    logging.warning(f"Leaf already exists: {path}")
-                    raise ValueError(f"A leaf named '{name}' already exists.")
-                else:
-                    logging.error(f"Attempting to create node over existing leaf: {path}")
-                    raise ValueError(f"Cannot create node '{name}': a leaf already exists.")
-            elif dir_exists:
-                if is_leaf:
-                    logging.error(f"Attempting to create leaf over existing node: {path}")
-                    raise ValueError(f"Cannot create leaf '{name}': a node already exists.")
-                else:
-                    logging.warning(f"Node already exists: {path}")
-                    raise ValueError(f"A node named '{name}' already exists.")
-            else:
-                if is_leaf:
-                    logging.debug(f"Creating leaf: {path}")
+            if is_leaf:
+                if hasattr(current, 'create_leaf'):
                     current.create_leaf(name, content)
                 else:
-                    logging.debug(f"Creating node: {path}")
+                    raise AttributeError(f"Cannot create leaf: {current._path} is not a valid node")
+            else:
+                if hasattr(current, 'create_node'):
                     current.create_node(name)
-            
-            # Perform integrity check and cleanup immediately after creation
-            self.verify_tree_integrity()
-            self.cleanup_filesystem()
+                else:
+                    raise AttributeError(f"Cannot create node: {current._path} is not a valid node")
             
             self.refresh_tree()
             self.select_item_by_path(path)
@@ -516,6 +570,8 @@ class AlightGUI(QMainWindow):
         self.tree.expandItem(root_item)
         self.on_item_clicked(root_item, 0)
         logging.debug("Root item selected as fallback")
+
+        self.path_input.setText(path)
 
     def update_entry(self):
         path = self.path_input.text()

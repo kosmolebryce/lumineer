@@ -14,6 +14,38 @@ BASE_DIR = os.path.join(appdirs.user_data_dir(), "Lumineer", "Alight")
 logging.basicConfig(filename='alight_debug.log', level=logging.DEBUG, 
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
+class PlaceholderNode:
+    def __init__(self, path):
+        self._path = path
+    
+    def __getattr__(self, name):
+        # Propagate the placeholder behavior
+        new_path = f"{self._path}.{name}"
+        return PlaceholderNode(new_path)
+    
+    def create_node(self, name):
+        # This method should be called on the parent node, not on the placeholder itself
+        parent_path, _ = self._path.rsplit('.', 1)
+        parent_node = self.get_node_from_path(parent_path)
+        if isinstance(parent_node, KnowledgeNode):
+            return parent_node.create_node(name)
+        else:
+            raise AttributeError(f"Cannot create node: {parent_path} is not a valid node")
+
+    def create_leaf(self, name, content):
+        # This method should be called on the parent node, not on the placeholder itself
+        parent_path, _ = self._path.rsplit('.', 1)
+        parent_node = self.get_node_from_path(parent_path)
+        if isinstance(parent_node, KnowledgeNode):
+            return parent_node.create_leaf(name, content)
+        else:
+            raise AttributeError(f"Cannot create leaf: {parent_path} is not a valid node")
+
+    def get_node_from_path(self, path):
+        # This method should be implemented in your main class (e.g., AlightGUI)
+        # For now, we'll raise a NotImplementedError
+        raise NotImplementedError("get_node_from_path method not implemented")
+
 class AlightFinder:
     @classmethod
     def find_spec(cls, fullname, path, target=None):
@@ -55,15 +87,24 @@ class KnowledgeNode:
         
         new_path = f"{self._path}.{name}" if self._path else name
         
-        # Check if a file already exists for this name (indicating a leaf)
-        file_path = os.path.join(BASE_DIR, new_path.replace('.', os.sep) + ".py")
-        if os.path.exists(file_path):
-            raise AttributeError(f"Attempting to create node '{name}' where a leaf already exists.")
+        # Check if a directory exists for this name (indicating a node)
+        dir_path = os.path.join(BASE_DIR, new_path.replace('.', os.sep))
+        if os.path.isdir(dir_path):
+            new_node = KnowledgeNode(new_path)
+            self._children[name] = new_node
+            return new_node
         
-        # Otherwise, proceed with creating a new node
-        new_node = KnowledgeNode(new_path)
-        self._children[name] = new_node
-        return new_node
+        # Check if a file exists for this name (indicating a leaf)
+        file_path = dir_path + ".py"
+        if os.path.exists(file_path):
+            # Instead of raising an AttributeError, return None to indicate a leaf
+            return None
+        
+        # For non-existent paths, return a placeholder node
+        # This allows for the possibility of creating new nodes/leaves in the GUI
+        placeholder_node = PlaceholderNode(new_path)
+        self._children[name] = placeholder_node
+        return placeholder_node
 
 
     def __repr__(self):
