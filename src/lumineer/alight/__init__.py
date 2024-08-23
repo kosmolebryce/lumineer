@@ -1,6 +1,5 @@
-# `src/lumineer/alight/__init__.py``
-from .constants import BASE_DIR
-from .core import create_alight
-from .gui import AlightGUI
+# __init__.py
+
+from .main import create_alight
 
 alight = create_alight()

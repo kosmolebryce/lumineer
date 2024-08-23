@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lumineer"
-version = "0.0.1a17"
+version = "0.0.1b1"
 description = "School tools"
 authors = ["K. LeBryce <kosmolebryce@pm.me>"]
 license = "Apache-2.0"
@@ -21,7 +21,7 @@ black = "^24.8.0"
 lumineer = "lumineer.__main__:main"
 flash = "lumineer.flash.main:main"
 scholar = "lumineer.scholar.main:main"
-alight = "lumineer.alight.gui:main"
+alight = "lumineer.alight.main:run_gui"
 
 [build-system]
 requires = ["poetry-core"]

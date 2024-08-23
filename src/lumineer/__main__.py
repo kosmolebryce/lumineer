@@ -111,8 +111,7 @@ class LumineerLauncher(QMainWindow):
         self.spectacle_app.show()
 
     def launch_alight(self):
-        from lumineer.alight.gui import AlightGUI
-        from lumineer.alight.core import KnowledgeNode
+        from lumineer.alight.main import AlightGUI, KnowledgeNode
         ALIGHT_DIR.mkdir(parents=True, exist_ok=True)
         # db_path = ALIGHT_DIR / ALIGHT_DB_FILE
         self.alight_app = AlightGUI()
