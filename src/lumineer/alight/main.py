@@ -155,7 +155,7 @@ class AlightGUI(QMainWindow):
 
         # Set initial sizes
         self.main_splitter.setSizes([360, 720])  # Adjust these values as needed
-        self.content_splitter.setSizes([100, 300])
+        self.content_splitter.setSizes([70, 740])
 
         self.refresh_tree()
         self.toggle_markdown_preview()

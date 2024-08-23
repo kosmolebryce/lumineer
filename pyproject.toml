@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lumineer"
-version = "0.0.1b3"
+version = "0.0.1b4"
 description = "School tools"
 authors = ["K. LeBryce <kosmolebryce@pm.me>"]
 license = "Apache-2.0"
