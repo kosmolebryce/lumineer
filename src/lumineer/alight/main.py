@@ -163,10 +163,25 @@ class AlightGUI(QMainWindow):
     def toggle_markdown_preview(self):
         is_leaf = self.leaf_radio.isChecked()
         self.markdown_view.setVisible(is_leaf)
+        
+        path = self.path_input.text()
+        node = self.get_node_from_path(path)
+        
+        if node is None:
+            return
+        
         if is_leaf:
             self.content_splitter.setSizes([70, 740])
+            if node.content is not None:
+                self.content_input.setPlainText(node.content)
+                self.markdown_view.setMarkdownText(node.content)
+            else:
+                self.content_input.clear()
+                self.markdown_view.setMarkdownText("")
         else:
             self.content_splitter.setSizes([400, 0])
+            children = ", ".join(node.children.keys())
+            self.content_input.setPlainText(f"Children: {children}")
 
     def show_rename_dialog(self):
         path = self.path_input.text()
@@ -187,10 +202,14 @@ class AlightGUI(QMainWindow):
         layout.addWidget(new_name_input)
 
         button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+            QDialogButtonBox.StandardButton.Ok | 
+            QDialogButtonBox.StandardButton.Cancel)
         button_box.accepted.connect(dialog.accept)
         button_box.rejected.connect(dialog.reject)
         layout.addWidget(button_box)
+
+        # Set focus on the input field
+        new_name_input.setFocus()
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
             new_name = new_name_input.text().strip()
@@ -322,19 +341,23 @@ class AlightGUI(QMainWindow):
         
         path = self.get_item_path(item)
         self.path_input.setText(path)
-        content = item.data(0, Qt.ItemDataRole.UserRole)
         
-        if content is not None:
+        node = self.get_node_from_path(path)
+        
+        if node is None:
+            return
+        
+        if node.content is not None:
+            # This is a leaf
             self.leaf_radio.setChecked(True)
-            self.content_input.setPlainText(content)
-            self.markdown_view.setMarkdownText(content)
+            self.content_input.setPlainText(node.content)
+            self.markdown_view.setMarkdownText(node.content)
         else:
+            # This is a node
             self.node_radio.setChecked(True)
-            node = self.get_node_from_path(path)
-            if node:
-                children = ", ".join(node.children.keys())
-                self.content_input.setPlainText(f"Children: {children}")
-                self.markdown_view.setMarkdownText("")
+            children = ", ".join(node.children.keys())
+            self.content_input.setPlainText(f"Children: {children}")
+            self.markdown_view.setMarkdownText("")
         
         self.toggle_markdown_preview()
 
@@ -366,6 +389,14 @@ class AlightGUI(QMainWindow):
         self.save_knowledge_base()
         self.refresh_tree()
         self.select_item_by_path(path)
+        
+        if is_leaf:
+            self.content_input.setPlainText(content or "")
+            self.markdown_view.setMarkdownText(content or "")
+        else:
+            self.content_input.setPlainText("Children:")
+            self.markdown_view.setMarkdownText("")
+        
         QMessageBox.information(self, "Success", 
                                 f"{'Leaf' if is_leaf else 'Node'} created.")
 
@@ -385,8 +416,12 @@ class AlightGUI(QMainWindow):
         msg.setInformativeText("This action will overwrite the existing content.")
         msg.setWindowTitle("Confirm Update")
         msg.setStandardButtons(QMessageBox.StandardButton.Yes | 
-                               QMessageBox.StandardButton.No)
+                            QMessageBox.StandardButton.No)
         msg.setDefaultButton(QMessageBox.StandardButton.No)
+        
+        # Make Yes button the default focus
+        yes_button = msg.button(QMessageBox.StandardButton.Yes)
+        yes_button.setFocus()
 
         if msg.exec() == QMessageBox.StandardButton.Yes:
             parts = path.split('.')
@@ -397,7 +432,11 @@ class AlightGUI(QMainWindow):
                 node = parent_node.children[name]
                 
                 # Update content
-                node.content = content
+                if is_leaf:
+                    node.content = content
+                else:
+                    node.content = None
+                    self.content_input.setPlainText("Children:")
 
                 self.save_knowledge_base()
                 self.refresh_tree()
@@ -428,8 +467,13 @@ class AlightGUI(QMainWindow):
         msg.setText("Are you sure you want to delete this entry?")
         msg.setInformativeText("This action cannot be undone.")
         msg.setWindowTitle("Confirm Deletion")
-        msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        msg.setStandardButtons(QMessageBox.StandardButton.Yes | 
+                            QMessageBox.StandardButton.No)
         msg.setDefaultButton(QMessageBox.StandardButton.No)
+        
+        # Make Yes button the default focus
+        yes_button = msg.button(QMessageBox.StandardButton.Yes)
+        yes_button.setFocus()
 
         if msg.exec() == QMessageBox.StandardButton.Yes:
             parts = path.split('.')
@@ -443,6 +487,7 @@ class AlightGUI(QMainWindow):
                 self.path_input.clear()
                 self.content_input.clear()
                 self.markdown_view.setMarkdownText("")
+                QMessageBox.information(self, "Success", "Entry deleted.")
             else:
                 QMessageBox.warning(self, "Error", "Entry not found.")
 
