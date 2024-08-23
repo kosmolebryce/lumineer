@@ -1,5 +1,5 @@
 # src/lumineer/alight/main.py
-
+import appdirs
 import sys
 import json
 import os
@@ -47,10 +47,25 @@ class MarkdownTextEdit(QTextBrowser):
 class AlightGUI(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.data_dir = os.path.join(appdirs.user_data_dir("Lumineer", "kosmolebryce"), "Alight")
+        os.makedirs(self.data_dir, exist_ok=True)
+        self.db_path = os.path.join(self.data_dir, "knowledge.json")
         self.knowledge_base = KnowledgeNode("alight")
         self.load_knowledge_base()
         self.init_ui()
         self.setup_shortcuts()
+
+    def load_knowledge_base(self):
+        if os.path.exists(self.db_path):
+            with open(self.db_path, "r") as f:
+                data = json.load(f)
+                self.knowledge_base = KnowledgeNode.from_dict(data)
+        else:
+            self.knowledge_base = KnowledgeNode("alight")
+
+    def save_knowledge_base(self):
+        with open(self.db_path, "w") as f:
+            json.dump(self.knowledge_base.to_dict(), f, indent=2)
 
     def eventFilter(self, source, event):
         if (source is self.tree and event.type() == QEvent.Type.KeyPress
@@ -87,7 +102,7 @@ class AlightGUI(QMainWindow):
 
         # Navigation bar
         nav_layout = QHBoxLayout()
-        nav_layout.addWidget(QLabel("Path:"))
+        nav_layout.addWidget(QLabel("Logical path:"))
         self.path_input = QLineEdit()
         self.path_input.setPlaceholderText("Enter path (e.g., alight.science.physics)")
         self.path_input.returnPressed.connect(self.navigate_to_path)
@@ -228,18 +243,6 @@ class AlightGUI(QMainWindow):
         update_shortcut = QShortcut(QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_S),
                                     self)
         update_shortcut.activated.connect(self.update_entry)
-
-    def load_knowledge_base(self):
-        if os.path.exists("knowledge_base.json"):
-            with open("knowledge_base.json", "r") as f:
-                data = json.load(f)
-                self.knowledge_base = KnowledgeNode.from_dict(data)
-        else:
-            self.knowledge_base = KnowledgeNode("alight")
-
-    def save_knowledge_base(self):
-        with open("knowledge_base.json", "w") as f:
-            json.dump(self.knowledge_base.to_dict(), f, indent=2)
 
     def refresh_tree(self):
         self.tree.clear()
