@@ -47,7 +47,7 @@ class MarkdownTextEdit(QTextBrowser):
 class AlightGUI(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.data_dir = os.path.join(appdirs.user_data_dir("Lumineer", "kosmolebryce"), "Alight")
+        self.data_dir = os.path.join(Path(Path.home(), "Library/Application Support/Lumineer", "Alight")
         os.makedirs(self.data_dir, exist_ok=True)
         self.db_path = os.path.join(self.data_dir, "knowledge.json")
         self.knowledge_base = KnowledgeNode("alight")
@@ -417,12 +417,8 @@ class AlightGUI(QMainWindow):
         msg.setWindowTitle("Confirm Update")
         msg.setStandardButtons(QMessageBox.StandardButton.Yes | 
                             QMessageBox.StandardButton.No)
-        msg.setDefaultButton(QMessageBox.StandardButton.No)
-        
-        # Make Yes button the default focus
-        yes_button = msg.button(QMessageBox.StandardButton.Yes)
-        yes_button.setFocus()
-
+        msg.setDefaultButton(QMessageBox.StandardButton.Yes)
+    
         if msg.exec() == QMessageBox.StandardButton.Yes:
             parts = path.split('.')
             parent_path, name = '.'.join(parts[:-1]), parts[-1]
@@ -444,8 +440,6 @@ class AlightGUI(QMainWindow):
                 # Update the path input to reflect any changes
                 self.path_input.setText(path)
                 self.select_item_by_path(path)
-                
-                QMessageBox.information(self, "Success", "Entry updated.")
             else:
                 QMessageBox.warning(self, "Error", "Entry not found.")
 
