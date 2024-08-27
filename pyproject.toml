@@ -12,6 +12,7 @@ python = "^3.12"
 appdirs = "^1.4.4"
 markdown = "^3.6"
 pyqt6 = "^6.7.1"
+psutil = "^6.0.0"
 
 [tool.poetry.group.dev.dependencies]
 poetry = "^1.8.3"
