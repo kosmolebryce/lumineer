@@ -6,7 +6,7 @@ import os
 from PyQt6.QtWidgets import (QApplication, QDialog, QDialogButtonBox, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QLabel, QLineEdit, QPushButton,
                              QTextEdit, QTreeWidget, QTreeWidgetItem,
-                             QMessageBox, QSplitter, QTextBrowser, QRadioButton)
+                             QMessageBox, QSplitter, QTextBrowser, QRadioButton, QSizePolicy)
 from PyQt6.QtGui import QShortcut, QKeySequence
 from PyQt6.QtCore import Qt, QEvent
 
@@ -99,6 +99,7 @@ class AlightGUI(QMainWindow):
         right_widget = QWidget()
         self.main_splitter.addWidget(right_widget)
         right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
 
         # Navigation bar
         nav_layout = QHBoxLayout()
@@ -110,7 +111,7 @@ class AlightGUI(QMainWindow):
         nav_button = QPushButton("Go")
         nav_button.clicked.connect(self.navigate_to_path)
         nav_layout.addWidget(nav_button)
-        rename_button = QPushButton("Rename...")
+        rename_button = QPushButton("Rename")
         rename_button.clicked.connect(self.show_rename_dialog)
         nav_layout.addWidget(rename_button)
         right_layout.addLayout(nav_layout)
@@ -139,6 +140,10 @@ class AlightGUI(QMainWindow):
 
         # CRUD buttons
         button_layout = QHBoxLayout()
+        button_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins
+        button_layout.setSpacing(6)  # Adjust spacing between buttons if needed
+        button_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
         create_btn = QPushButton("Create")
         create_btn.clicked.connect(self.create_entry)
         button_layout.addWidget(create_btn)
@@ -151,7 +156,13 @@ class AlightGUI(QMainWindow):
         delete_btn.clicked.connect(self.delete_entry)
         button_layout.addWidget(delete_btn)
 
-        right_layout.addLayout(button_layout)
+        button_layout.addStretch(1)
+
+        button_container = QWidget()
+        button_container.setLayout(button_layout)
+        button_container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+
+        right_layout.addWidget(button_container)
 
         # Set initial sizes
         self.main_splitter.setSizes([360, 720])  # Adjust these values as needed
@@ -355,7 +366,7 @@ class AlightGUI(QMainWindow):
         else:
             # This is a node
             self.node_radio.setChecked(True)
-            children = ", ".join(node.children.keys())
+            children = "  - \n".join(node.children.keys())
             self.content_input.setPlainText(f"Children: {children}")
             self.markdown_view.setMarkdownText("")
         
