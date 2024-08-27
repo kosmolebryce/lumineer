@@ -52,7 +52,7 @@ class LumineerLauncher(QMainWindow):
         main_layout.addWidget(grabber)
 
         # Button layout
-        button_layout = QHBoxLayout()
+        button_layout = QVBoxLayout()
         button_layout.setSpacing(1)
         button_layout.setContentsMargins(1, 1, 1, 1)
 
@@ -77,8 +77,8 @@ class LumineerLauncher(QMainWindow):
             }
         """)
 
-        width = 250  # Adjust as needed
-        height = 70  # Adjust as needed
+        width = 50  # Adjust as needed
+        height = 250  # Adjust as needed
         self.setFixedSize(QSize(width, height))
         self.position_window()
 
@@ -94,6 +94,7 @@ class LumineerLauncher(QMainWindow):
                 border: none;
                 background-color: #3E3E3E;
                 padding: 0px;
+                text-align: center;
             }
             QPushButton:hover {
                 background-color: #4E4E4E;
@@ -137,8 +138,8 @@ class LumineerLauncher(QMainWindow):
         screen_size = screen.geometry()
         size = self.geometry()
 
-        x = screen_size.width() - size.width() - 10
-        y = screen_size.height() - size.height() - 100
+        x = screen_size.width() - size.width()
+        y = round(screen_size.height() / 2) - (round(size.height() / 2))
 
         self.move(x, y)
 
