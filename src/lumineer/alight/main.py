@@ -117,7 +117,7 @@ class AlightGUI(QMainWindow):
         right_layout.addLayout(nav_layout)
 
         # Node/Leaf selection
-        selection_layout = QHBoxLayout()
+        selection_layout = QVBoxLayout()
         self.node_radio = QRadioButton("Node")
         self.leaf_radio = QRadioButton("Leaf")
         self.leaf_radio.setChecked(True)
@@ -278,7 +278,7 @@ class AlightGUI(QMainWindow):
         self.tree.clear()
         root_item = QTreeWidgetItem(self.tree, ["alight"])
         self.add_node_to_tree(self.knowledge_base, root_item)
-        self.tree.expandAll()
+        # self.tree.expandAll()
 
     def add_node_to_tree(self, node, parent_item):
         for name, child in node.children.items():
