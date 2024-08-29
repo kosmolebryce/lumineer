@@ -20,7 +20,7 @@ APP_DATA_DIR = Path(user_data_dir(APP_NAME, APP_AUTHOR))
 APP_CONFIG_DIR = Path(user_config_dir(APP_NAME, APP_AUTHOR))
 DECKS_DIR = APP_DATA_DIR / "flash" / "Decks"
 
-class MarkdownTextEdit(QTextEdit):
+class MarkdownTextBrowser(QTextEdit):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setReadOnly(True)
@@ -144,7 +144,7 @@ class FlashcardApp(QMainWindow):
         self.deck_dropdown.currentIndexChanged.connect(self.load_deck)
         layout.addWidget(self.deck_dropdown)
 
-        self.card_display = MarkdownTextEdit()
+        self.card_display = MarkdownTextBrowser()
         layout.addWidget(self.card_display)
 
         button_layout = QHBoxLayout()

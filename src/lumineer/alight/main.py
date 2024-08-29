@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (QApplication, QDialog, QDialogButtonBox, QMainWindo
                              QHBoxLayout, QLabel, QLineEdit, QPushButton,
                              QTextEdit, QTreeWidget, QTreeWidgetItem,
                              QMessageBox, QSplitter, QTextBrowser, QRadioButton, QSizePolicy)
+from pathlib import Path
 from PyQt6.QtGui import QShortcut, QKeySequence
 from PyQt6.QtCore import Qt, QEvent
 
@@ -39,17 +40,27 @@ class KnowledgeNode:
             node.children[child.name] = child
         return node
 
-class MarkdownTextEdit(QTextBrowser):
+class MarkdownTextBrowser(QTextBrowser):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setOpenExternalLinks(True)
+
     def setMarkdownText(self, text):
-        html = markdown.markdown(text)
+        html = markdown.markdown(text, extensions=['fenced_code', 'codehilite'])
         self.setHtml(html)
+
+    def loadResource(self, type, url):
+        if url.isLocalFile():
+            return super().loadResource(type, url)
+        else:
+            return None
 
 class AlightGUI(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.data_dir = os.path.join(appdirs.user_data_dir("Lumineer", "kosmolebryce"), "Alight")
-        os.makedirs(self.data_dir, exist_ok=True)
-        self.db_path = os.path.join(self.data_dir, "knowledge.json")
+        self.data_dir = Path(Path.home(), "Library/Application Support/Lumineer", "Alight")
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.db_path = self.data_dir / "knowledge.json"
         self.knowledge_base = KnowledgeNode("alight")
         self.load_knowledge_base()
         self.init_ui()
@@ -114,6 +125,9 @@ class AlightGUI(QMainWindow):
         rename_button = QPushButton("Rename")
         rename_button.clicked.connect(self.show_rename_dialog)
         nav_layout.addWidget(rename_button)
+        move_button = QPushButton("Move")
+        move_button.clicked.connect(self.show_move_dialog)
+        nav_layout.addWidget(move_button)
         right_layout.addLayout(nav_layout)
 
         # Node/Leaf selection
@@ -132,7 +146,7 @@ class AlightGUI(QMainWindow):
         content_layout.addWidget(QLabel("Content:"))
         self.content_splitter = QSplitter(Qt.Orientation.Vertical)
         self.content_input = QTextEdit()
-        self.markdown_view = MarkdownTextEdit()
+        self.markdown_view = MarkdownTextBrowser()
         self.content_splitter.addWidget(self.content_input)
         self.content_splitter.addWidget(self.markdown_view)
         content_layout.addWidget(self.content_splitter)
@@ -174,13 +188,13 @@ class AlightGUI(QMainWindow):
     def toggle_markdown_preview(self):
         is_leaf = self.leaf_radio.isChecked()
         self.markdown_view.setVisible(is_leaf)
-        
+
         path = self.path_input.text()
         node = self.get_node_from_path(path)
-        
+
         if node is None:
             return
-        
+
         if is_leaf:
             self.content_splitter.setSizes([70, 740])
             if node.content is not None:
@@ -273,6 +287,12 @@ class AlightGUI(QMainWindow):
         update_shortcut = QShortcut(QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_S),
                                     self)
         update_shortcut.activated.connect(self.update_entry)
+
+        move_shortcut = QShortcut(QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_M), self)
+        move_shortcut.activated.connect(self.show_move_dialog)
+
+        rename_shortcut = QShortcut(QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_R), self)
+        rename_shortcut.activated.connect(self.show_rename_dialog)
 
     def refresh_tree(self):
         self.tree.clear()
@@ -412,11 +432,12 @@ class AlightGUI(QMainWindow):
                                 f"{'Leaf' if is_leaf else 'Node'} created.")
 
     def update_entry(self):
-        path = self.path_input.text()
+        old_path = self.path_input.text()
+        new_path = self.path_input.text()
         is_leaf = self.leaf_radio.isChecked()
         content = self.content_input.toPlainText() if is_leaf else None
 
-        if not path.startswith('alight'):
+        if not new_path.startswith('alight'):
             QMessageBox.warning(self, "Error", "Invalid path.")
             return
 
@@ -428,43 +449,92 @@ class AlightGUI(QMainWindow):
         msg.setWindowTitle("Confirm Update")
         msg.setStandardButtons(QMessageBox.StandardButton.Yes | 
                             QMessageBox.StandardButton.No)
-        msg.setDefaultButton(QMessageBox.StandardButton.No)
-        
-        # Make Yes button the default focus
-        yes_button = msg.button(QMessageBox.StandardButton.Yes)
-        yes_button.setFocus()
+        msg.setDefaultButton(QMessageBox.StandardButton.Yes)
 
         if msg.exec() == QMessageBox.StandardButton.Yes:
-            parts = path.split('.')
-            parent_path, name = '.'.join(parts[:-1]), parts[-1]
-            parent_node = self.get_node_from_path(parent_path)
+            old_parts = old_path.split('.')
+            new_parts = new_path.split('.')
             
-            if parent_node and name in parent_node.children:
-                node = parent_node.children[name]
-                
-                # Update content
-                if is_leaf:
-                    node.content = content
-                else:
-                    node.content = None
-                    self.content_input.setPlainText("Children:")
-
-                self.save_knowledge_base()
-                self.refresh_tree()
-                
-                # Update the path input to reflect any changes
-                self.path_input.setText(path)
-                self.select_item_by_path(path)
-                
-                QMessageBox.information(self, "Success", "Entry updated.")
+            # Check if the node is being moved
+            if old_parts != new_parts:
+                self.move_node(old_path, new_path, content)
             else:
-                QMessageBox.warning(self, "Error", "Entry not found.")
+                # Update content if not moving
+                node = self.get_node_from_path(new_path)
+                if node:
+                    if is_leaf:
+                        node.content = content
+                    else:
+                        node.content = None
+                        self.content_input.setPlainText("Children:")
+
+            self.save_knowledge_base()
+            self.refresh_tree()
+            self.select_item_by_path(new_path)
+            QMessageBox.information(self, "Success", "Entry updated.")
 
     def update_child_paths(self, node, parent_path):
         for child_name, child_node in node.children.items():
             child_node.name = child_name
             new_parent_path = f"{parent_path}.{node.name}"
             self.update_child_paths(child_node, new_parent_path)
+
+    def show_move_dialog(self):
+        current_path = self.path_input.text()
+        if not current_path or current_path == 'alight':
+            QMessageBox.warning(self, "Error", "Invalid path for moving.")
+            return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Move Entry")
+        layout = QVBoxLayout(dialog)
+
+        layout.addWidget(QLabel(f"Current path: {current_path}"))
+        new_path_input = QLineEdit(dialog)
+        new_path_input.setPlaceholderText("Enter new path")
+        new_path_input.setText(current_path)
+        layout.addWidget(new_path_input)
+
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | 
+            QDialogButtonBox.StandardButton.Cancel)
+        button_box.accepted.connect(dialog.accept)
+        button_box.rejected.connect(dialog.reject)
+        layout.addWidget(button_box)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            new_path = new_path_input.text().strip()
+            if new_path and new_path != current_path:
+                self.move_node(current_path, new_path)
+
+    def move_node(self, old_path, new_path):
+        old_parts = old_path.split('.')
+        new_parts = new_path.split('.')
+        
+        old_parent = self.get_node_from_path('.'.join(old_parts[:-1]))
+        new_parent = self.get_node_from_path('.'.join(new_parts[:-1]))
+        
+        if not old_parent or not new_parent:
+            QMessageBox.warning(self, "Error", "Invalid old or new path.")
+            return
+        
+        if new_parts[-1] in new_parent.children:
+            QMessageBox.warning(self, "Error", 
+                                f"An entry named '{new_parts[-1]}' already exists.")
+            return
+
+        node = old_parent.children.pop(old_parts[-1])
+        node.name = new_parts[-1]
+        new_parent.children[new_parts[-1]] = node
+
+        # Update paths of all child nodes
+        self.update_child_paths(node, '.'.join(new_parts[:-1]))
+
+        self.save_knowledge_base()
+        self.refresh_tree()
+        self.select_item_by_path(new_path)
+
+        QMessageBox.information(self, "Success", "Entry moved successfully.")
 
     def delete_entry(self):
         path = self.path_input.text()
@@ -480,11 +550,7 @@ class AlightGUI(QMainWindow):
         msg.setWindowTitle("Confirm Deletion")
         msg.setStandardButtons(QMessageBox.StandardButton.Yes | 
                             QMessageBox.StandardButton.No)
-        msg.setDefaultButton(QMessageBox.StandardButton.No)
-        
-        # Make Yes button the default focus
-        yes_button = msg.button(QMessageBox.StandardButton.Yes)
-        yes_button.setFocus()
+        msg.setDefaultButton(QMessageBox.StandardButton.Yes)
 
         if msg.exec() == QMessageBox.StandardButton.Yes:
             parts = path.split('.')
