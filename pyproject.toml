@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lumineer"
-version = "0.0.1b9"
+version = "0.0.1b10"
 description = "School tools"
 authors = ["K. LeBryce <kosmolebryce@pm.me>"]
 license = "Apache-2.0"
@@ -13,6 +13,7 @@ appdirs = "^1.4.4"
 markdown = "^3.6"
 pyqt6 = "^6.7.1"
 psutil = "^6.0.0"
+pandas = "^2.2.2"
 
 [tool.poetry.group.dev.dependencies]
 poetry = "^1.8.3"

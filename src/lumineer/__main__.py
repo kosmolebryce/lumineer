@@ -1,9 +1,14 @@
+import atexit
+import importlib
 import logging
 import os
 import psutil
+import subprocess
 import sys
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, 
-                             QPushButton, QVBoxLayout, QLabel, QMessageBox)
+import tempfile
+from PyQt6.QtWidgets import (QApplication, QDialog, QDialogButtonBox, QMainWindow, QWidget, 
+                             QHBoxLayout, QPushButton, QVBoxLayout, QLabel, QMessageBox,
+                             QListWidget)
 from PyQt6.QtCore import Qt, QSize, QEvent, QPoint, QTextStream
 from PyQt6.QtGui import QFont, QKeySequence, QMouseEvent, QScreen
 from PyQt6.QtNetwork import QLocalServer, QLocalSocket
@@ -20,9 +25,35 @@ SERVER_NAME = "LumineerLauncherServer"
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+class ModuleSelectionDialog(QDialog):
+    def __init__(self, modules, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Select a module")
+        layout = QVBoxLayout(self)
+        
+        self.listWidget = QListWidget()
+        self.listWidget.setStyleSheet(
+            """
+            color: white;
+            """
+        )
+        self.listWidget.addItems(modules)
+        layout.addWidget(self.listWidget)
+        
+        buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | 
+                                     QDialogButtonBox.StandardButton.Cancel)
+        buttonBox.setStyleSheet("""
+            color: white;
+        """)
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+        layout.addWidget(buttonBox)
+
 class LumineerLauncher(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.temp_scripts = []
+        atexit.register(self.cleanup_temp_scripts)
         self.initUI()
         QApplication.instance().installEventFilter(self)
         self.oldPos = self.pos()
@@ -44,6 +75,7 @@ class LumineerLauncher(QMainWindow):
         grabber = QLabel("≡")
         grabber.setAlignment(Qt.AlignmentFlag.AlignCenter)
         grabber.setStyleSheet("""
+            color: white;
             background-color: #1E1E1E;
             font-size: 16px;
             padding: 2px;
@@ -61,6 +93,7 @@ class LumineerLauncher(QMainWindow):
             ('📓', self.launch_scholar, 'Scholar'),
             ('💡', self.launch_alight, 'Alight'),
             ('💎', self.launch_spectacle, 'Spectacle'),
+            ('🔧', self.launch_utils, 'Utilities'),
             ('🚪', self.close, 'Exit')
         ]
 
@@ -132,6 +165,119 @@ class LumineerLauncher(QMainWindow):
         self.launch_application("alight", AlightGUI)
 
         return False
+
+    def launch_utils(self):
+        utils_path = Path(__file__).parent / 'utils'
+        modules = [f.stem for f in utils_path.glob('*.py') 
+                   if f.stem != '__init__']
+        
+        dialog = ModuleSelectionDialog(modules, self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            selected_module = dialog.listWidget.currentItem().text()
+            self.launch_module_in_terminal(selected_module)
+
+    def launch_module_in_terminal(self, module_name):
+        """
+        Launches the selected module in an interactive Python terminal session.
+        """
+        try:
+            # Get the directory containing the lumineer package
+            lumineer_dir = os.path.dirname(os.path.dirname(__file__))
+
+            # Dynamic path insertion
+            sys.path.insert(0, lumineer_dir)
+
+            # Check if the module exists and is importable
+            module_full_path = f'lumineer.utils.{module_name}'
+            try:
+                # Attempt to import the module to validate it exists
+                module = importlib.import_module(module_full_path)
+            except ImportError as import_error:
+                QMessageBox.critical(self, "Error", f"Failed to import {module_full_path}: {import_error}")
+                return
+
+            if sys.platform == 'darwin':  # macOS
+                python_path = sys.executable
+
+                # Create a temporary Python script
+                script_file = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
+                script_content = f"""
+import sys
+import cmd
+import code
+
+sys.path.insert(0, '{lumineer_dir}')
+import {module_full_path} as module
+from {module_full_path} import *
+
+class LumineerCmd(cmd.Cmd):
+    intro = 'Module {module_name} imported as "module". You can now use it. Type "help" for more information.'
+    prompt = '>>> '
+
+    def default(self, line):
+        try:
+            code.InteractiveInterpreter(locals=globals()).runcode(line)
+        except Exception as e:
+            print(f"Error: {{e}}")
+
+    def do_exit(self, arg):
+        'Exit the Lumineer interactive session'
+        print("Exiting Lumineer interactive session...")
+        return True
+
+    def do_EOF(self, arg):
+        'Exit the Lumineer interactive session'
+        print("\\nExiting Lumineer interactive session...")
+        return True
+
+if __name__ == '__main__':
+    LumineerCmd().cmdloop()
+"""
+                script_file.write(script_content)
+                script_file.close()
+                script_path = script_file.name
+
+                # Add the script to the list of temp scripts to be cleaned up
+                self.temp_scripts.append(script_path)
+
+                apple_script = f'''
+                tell application "Terminal"
+                    do script "clear && {python_path} {script_path}"
+                    activate
+                end tell
+                '''
+
+                process = subprocess.Popen(['osascript', '-e', apple_script],
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE)
+                stdout, stderr = process.communicate()
+
+                if process.returncode != 0:
+                    raise subprocess.CalledProcessError(
+                        process.returncode, 'osascript',
+                        stdout, stderr)
+
+            elif sys.platform == 'win32':  # Windows
+                subprocess.Popen(f'start cmd /k python -i -c "import {module_full_path}; print(\'Module {module_name} imported. You can now use it.\')"', shell=True)
+
+            else:  # Linux and other Unix-like systems
+                subprocess.Popen(['x-terminal-emulator', '-e', f"python3 -i -c 'import {module_full_path}; print(\"Module {module_name} imported. You can now use it.\"); exec /bin/bash'"])
+
+        except ImportError as e:
+            QMessageBox.critical(self, "Error", f"ImportError: {str(e)}")
+        except subprocess.CalledProcessError as e:
+            error_msg = (f"Command '{e.cmd}' returned non-zero exit status "
+                        f"{e.returncode}.\nStdout: {e.stdout}\nStderr: {e.stderr}")
+            QMessageBox.critical(self, "Error", error_msg)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"An unexpected error occurred: {str(e)}")
+    
+    def cleanup_temp_scripts(self):
+        for script_path in self.temp_scripts:
+            try:
+                os.unlink(script_path)
+            except Exception:
+                pass  # Ignore errors during cleanup
 
     def position_window(self):
         screen = QApplication.primaryScreen()
