@@ -29,7 +29,7 @@ class Population:
 
     @staticmethod
     def msbalance(
-        ploidy: str,
+        ploidy: str = "diploid",
         µ: Optional[float] = None,
         s: Optional[float] = None,
         q: Optional[float] = None

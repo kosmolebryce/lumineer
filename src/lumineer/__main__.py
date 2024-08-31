@@ -28,26 +28,72 @@ logger = logging.getLogger(__name__)
 class ModuleSelectionDialog(QDialog):
     def __init__(self, modules, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Select a module")
+        self.setWindowTitle("Select a Module")
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #2E2E2E;
+                border: 1px solid #444;
+                border-radius: 10px;
+            }
+        """)
+
         layout = QVBoxLayout(self)
-        
+        layout.setContentsMargins(10, 10, 10, 10)
+
+        # Create a styled list widget for module names
         self.listWidget = QListWidget()
-        self.listWidget.setStyleSheet(
-            """
-            color: white;
-            """
-        )
         self.listWidget.addItems(modules)
+        self.listWidget.setStyleSheet("""
+            QListWidget {
+                background-color: #1E1E1E;
+                color: white;
+                border: none;
+                padding: 5px;
+                selection-background-color: #3E3E3E;
+                border-radius: 5px;
+            }
+            QListWidget::item {
+                margin: 0px;  /* Consistent margin to avoid text movement */
+            }
+            QListWidget::item:selected {
+                background-color: #4E4E4E;
+                color: #FFD700;  /* Gold color for selected text */
+            }
+            QListWidget::item:hover {
+                background-color: rgba(42, 42, 42, 0.8); /* Subtle hover without padding/border changes */
+            }
+        """)
+        self.listWidget.setFont(QFont('Arial', 11))
         layout.addWidget(self.listWidget)
-        
-        buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | 
+
+        # Button box for Ok and Cancel with custom styles
+        buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok |
                                      QDialogButtonBox.StandardButton.Cancel)
         buttonBox.setStyleSheet("""
-            color: white;
+            QDialogButtonBox {
+                padding: 5px;
+            }
+            QPushButton {
+                background-color: #3E3E3E;
+                color: white;
+                border: 1px solid #555;
+                border-radius: 5px;
+                padding: 5px 10px;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #4E4E4E;
+            }
+            QPushButton:pressed {
+                background-color: #2E2E2E;
+            }
         """)
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
         layout.addWidget(buttonBox)
+
+        # Set fixed size to avoid resizing issues
+        self.setFixedSize(200, 300)
 
 class LumineerLauncher(QMainWindow):
     def __init__(self):
@@ -89,7 +135,7 @@ class LumineerLauncher(QMainWindow):
         button_layout.setContentsMargins(1, 1, 1, 1)
 
         buttons = [
-            ('🗂️', self.launch_flash, 'flash'),
+            ('🗂️', self.launch_flash, 'Flash'),
             ('📓', self.launch_scholar, 'Scholar'),
             ('💡', self.launch_alight, 'Alight'),
             ('💎', self.launch_spectacle, 'Spectacle'),
@@ -126,7 +172,7 @@ class LumineerLauncher(QMainWindow):
             QPushButton {
                 border: none;
                 background-color: #3E3E3E;
-                padding: 0px;
+                padding-bottom: 10px;
                 text-align: center;
             }
             QPushButton:hover {
@@ -178,68 +224,64 @@ class LumineerLauncher(QMainWindow):
 
     def launch_module_in_terminal(self, module_name):
         """
-        Launches the selected module in an interactive Python terminal session.
+        Launches the selected module in an interactive Python terminal session,
+        importing it using its actual module name and making it accessible directly.
         """
         try:
             # Get the directory containing the lumineer package
             lumineer_dir = os.path.dirname(os.path.dirname(__file__))
 
-            # Dynamic path insertion
+            # Dynamic path insertion to locate the module
             sys.path.insert(0, lumineer_dir)
 
-            # Check if the module exists and is importable
+            # Construct the full import path for the module
             module_full_path = f'lumineer.utils.{module_name}'
+
+            # Check if the module exists and is importable
             try:
-                # Attempt to import the module to validate it exists
                 module = importlib.import_module(module_full_path)
             except ImportError as import_error:
                 QMessageBox.critical(self, "Error", f"Failed to import {module_full_path}: {import_error}")
                 return
 
+            # Prepare the interactive session script
+            script_content = f"""
+import sys
+import code
+import importlib
+
+# Add the lumineer directory to sys.path
+sys.path.insert(0, '{lumineer_dir}')
+
+# Import the selected module with its full name
+{module_name} = importlib.import_module('{module_full_path}')
+
+# Alias the module to make it directly accessible by its shortened name
+sys.modules['{module_name}'] = {module_name}
+
+# Create a local context for the interactive session
+local_context = globals()
+local_context.update({{"{module_name}": {module_name}}})
+
+# Start an interactive session with the module available directly
+banner = "Module '{module_full_path}' imported. You can now use it directly as '{module_name}'."
+code.interact(local=local_context, banner=banner)
+"""
+
+            # Platform-specific terminal execution
             if sys.platform == 'darwin':  # macOS
                 python_path = sys.executable
 
-                # Create a temporary Python script
+                # Create a temporary Python script for macOS Terminal
                 script_file = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
-                script_content = f"""
-import sys
-import cmd
-import code
-
-sys.path.insert(0, '{lumineer_dir}')
-import {module_full_path} as module
-from {module_full_path} import *
-
-class LumineerCmd(cmd.Cmd):
-    intro = 'Module {module_name} imported as "module". You can now use it. Type "help" for more information.'
-    prompt = '>>> '
-
-    def default(self, line):
-        try:
-            code.InteractiveInterpreter(locals=globals()).runcode(line)
-        except Exception as e:
-            print(f"Error: {{e}}")
-
-    def do_exit(self, arg):
-        'Exit the Lumineer interactive session'
-        print("Exiting Lumineer interactive session...")
-        return True
-
-    def do_EOF(self, arg):
-        'Exit the Lumineer interactive session'
-        print("\\nExiting Lumineer interactive session...")
-        return True
-
-if __name__ == '__main__':
-    LumineerCmd().cmdloop()
-"""
                 script_file.write(script_content)
                 script_file.close()
                 script_path = script_file.name
 
-                # Add the script to the list of temp scripts to be cleaned up
+                # Register the temporary script for cleanup
                 self.temp_scripts.append(script_path)
 
+                # AppleScript to open the Terminal with the interactive session
                 apple_script = f'''
                 tell application "Terminal"
                     do script "clear && {python_path} {script_path}"
@@ -247,6 +289,7 @@ if __name__ == '__main__':
                 end tell
                 '''
 
+                # Execute the AppleScript
                 process = subprocess.Popen(['osascript', '-e', apple_script],
                                         stdout=subprocess.PIPE,
                                         stderr=subprocess.PIPE)
@@ -258,10 +301,24 @@ if __name__ == '__main__':
                         stdout, stderr)
 
             elif sys.platform == 'win32':  # Windows
-                subprocess.Popen(f'start cmd /k python -i -c "import {module_full_path}; print(\'Module {module_name} imported. You can now use it.\')"', shell=True)
+                # Create a temporary Python script for Windows
+                script_file = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
+                script_file.write(script_content)
+                script_file.close()
+                script_path = script_file.name
+
+                # Command to open Command Prompt with an interactive session
+                subprocess.Popen(f'start cmd /k "{python_path} {script_path}"', shell=True)
 
             else:  # Linux and other Unix-like systems
-                subprocess.Popen(['x-terminal-emulator', '-e', f"python3 -i -c 'import {module_full_path}; print(\"Module {module_name} imported. You can now use it.\"); exec /bin/bash'"])
+                # Create a temporary Python script for Linux
+                script_file = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
+                script_file.write(script_content)
+                script_file.close()
+                script_path = script_file.name
+
+                # Command to open a terminal emulator with an interactive session
+                subprocess.Popen(['x-terminal-emulator', '-e', f"{python_path} {script_path}"])
 
         except ImportError as e:
             QMessageBox.critical(self, "Error", f"ImportError: {str(e)}")
@@ -271,7 +328,7 @@ if __name__ == '__main__':
             QMessageBox.critical(self, "Error", error_msg)
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An unexpected error occurred: {str(e)}")
-    
+
     def cleanup_temp_scripts(self):
         for script_path in self.temp_scripts:
             try:
